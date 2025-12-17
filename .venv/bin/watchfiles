@@ -1,4 +1,4 @@
-#!/Users/Gokulsambathkumar/Personal/Ricago/ric-aiagent/.venv/bin/python3
+#!/Users/Gokulsambathkumar/Personal/Ricago/ric-aiagent/.venv/bin/python3.13
 import sys
 from watchfiles.cli import cli
 if __name__ == '__main__':

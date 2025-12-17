@@ -1,4 +1,4 @@
-#!/Users/Gokulsambathkumar/Personal/Ricago/ric-aiagent/.venv/bin/python3
+#!/Users/Gokulsambathkumar/Personal/Ricago/ric-aiagent/.venv/bin/python3.13
 import sys
 from websockets.cli import main
 if __name__ == '__main__':
