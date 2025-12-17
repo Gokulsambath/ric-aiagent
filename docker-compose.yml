@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ricagent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ric-aiagent}
+      POSTGRES_USER: ${POSTGRES_USER:-ricagent_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ricagent_postgres_data:/var/lib/postgresql/data
+    ports:
+      # Different port from AIProxysServ (5432)
+      - "${POSTGRES_PORT:-5434}:5432"
+    networks:
+      - ricago-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ricagent_user} -d ${POSTGRES_DB:-ric-aiagent}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  ricagent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ricagent-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Database Configuration
+      DATABASE_TYPE: ${DATABASE_TYPE:-postgresql}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${POSTGRES_DB:-ric-aiagent}
+
+      # Application Configuration
+      API_HOST: ${API_HOST:-0.0.0.0}
+      API_PORT: ${API_PORT:-8000}
+      SECRET_KEY: ${SECRET_KEY:-RICAGO_AGENT_KEY}
+
+      # Botpress Integration (optional)
+      BOTPRESS_URL: ${BOTPRESS_URL:-http://botpress:3000}
+    volumes:
+      - ./app:/app/app
+      - ricagent_api_logs:/app/logs
+    ports:
+      # Different port from AIProxysServ (8000)
+      - "${API_PORT:-8002}:8000"
+    networks:
+      - ricago-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8000/ || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Botpress Chatbot Platform
+  botpress:
+    image: botpress/server:latest
+    container_name: ricagent-botpress
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
+      BP_MODULE_NLU_DUCKLINGURL: http://duckling:8000
+      EXTERNAL_URL: ${BOTPRESS_EXTERNAL_URL:-http://localhost:3002}
+      BP_PRODUCTION: ${BP_PRODUCTION:-false}
+    volumes:
+      - ricagent_botpress_data:/botpress/data
+    ports:
+      # Different port from AIProxysServ (3000)
+      - "${BOTPRESS_PORT:-3002}:3000"
+    networks:
+      - ricago-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3000/status || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Duckling (NLU service for Botpress)
+  duckling:
+    image: rasa/duckling:latest
+    container_name: ricagent-duckling
+    restart: unless-stopped
+    ports:
+      # Different port from AIProxysServ (8001)
+      - "8003:8000"
+    networks:
+      - ricago-net
+
+  # PgAdmin (Postgres Dashboard)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ricagent-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ricagent.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      # Different port from AIProxysServ (5050)
+      - "${PGADMIN_PORT:-5052}:80"
+    networks:
+      - ricago-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+# Named volumes for data persistence (Unique to this project)
+volumes:
+  ricagent_postgres_data:
+    driver: local
+  ricagent_botpress_data:
+    driver: local
+  ricagent_api_logs:
+    driver: local
+
+# Connect to existing network
+networks:
+  ricago-net:
+    external: true
+    name: ricago_ricago-net
