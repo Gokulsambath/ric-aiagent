@@ -1,0 +1,12 @@
+{
+    "api_keys": [
+        {
+            "key": "test_secret_key_123",
+            "name": "Test Key",
+            "enabled": true,
+            "permissions": [
+                "chat"
+            ]
+        }
+    ]
+}

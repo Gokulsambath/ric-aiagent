@@ -34,6 +34,13 @@ class OllamaSettings(BaseSettings):
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
+class BotpressSettings(BaseSettings):
+    botpress_url: str = Field(default="http://botpress:3000", alias="BOTPRESS_URL")
+    webhook_id: str = Field(default="ric", alias="BOTPRESS_WEBHOOK_ID")
+    bot_id: str = Field(default="ric", alias="BOTPRESS_BOT_ID")
+    
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
+
 class ServerSettings(BaseSettings):
     cors_urls: List[str] = Field(
         default=[
@@ -47,7 +54,8 @@ class ServerSettings(BaseSettings):
             "http://localhost:3000",
             "http://localhost:8000",
             "https://ricagoapi.onrender.com",
-            "https://api.ricagoapi.com"
+            "https://api.ricagoapi.com",
+            "http://localhost:4000"
         ], 
         alias="CORS_URLS"
     )
@@ -75,6 +83,7 @@ class AppSettings(BaseSettings):
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     mail: MailSettings = Field(default_factory=MailSettings)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
+    botpress: BotpressSettings = Field(default_factory=BotpressSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     
