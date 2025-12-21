@@ -15,7 +15,7 @@ services:
       - ricagent_postgres_data:/var/lib/postgresql/data
     ports:
       # Different port from AIProxysServ (5432)
-      - "${POSTGRES_PORT:-5434}:5432"
+      - "${POSTGRES_PORT:-5435}:5432"
     networks:
       - ricago-net
     healthcheck:
@@ -48,9 +48,8 @@ services:
     volumes:
       - ./app:/app/app
       - ricagent_api_logs:/app/logs
-    ports:
-      # Different port from AIProxysServ (8000)
-      - "${API_PORT:-8002}:8000"
+    expose:
+      - "8000"
     networks:
       - ricago-net
     depends_on:
@@ -77,7 +76,7 @@ services:
       - ricagent_botpress_data:/botpress/data
     ports:
       # Different port from AIProxysServ (3000)
-      - "${BOTPRESS_PORT:-3002}:3000"
+      - "${BOTPRESS_PORT:-3005}:3000"
     networks:
       - ricago-net
     depends_on:
@@ -97,7 +96,7 @@ services:
     restart: unless-stopped
     ports:
       # Different port from AIProxysServ (8001)
-      - "8003:8000"
+      - "8005:8000"
     networks:
       - ricago-net
 
@@ -111,12 +110,26 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
     ports:
       # Different port from AIProxysServ (5050)
-      - "${PGADMIN_PORT:-5052}:80"
+      - "${PGADMIN_PORT:-5055}:80"
     networks:
       - ricago-net
     depends_on:
       postgres:
         condition: service_healthy
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:latest
+    container_name: ricagent-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ricagent-api
+    networks:
+      - ricago-net
 
 # Named volumes for data persistence (Unique to this project)
 volumes:
@@ -130,5 +143,4 @@ volumes:
 # Connect to existing network
 networks:
   ricago-net:
-    external: true
-    name: ricago_ricago-net
+    driver: bridge
