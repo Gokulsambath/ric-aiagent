@@ -8,4 +8,4 @@ class User(BaseModel):
     __tablename__ = "users"
     
     name = Column(String(255), nullable = False)
-    email = Column(String(100), nullable = True)
+    email = Column(String(100), nullable = True, unique = True)
