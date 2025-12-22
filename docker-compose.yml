@@ -46,9 +46,15 @@ services:
 
       # Botpress Integration (optional)
       BOTPRESS_URL: ${BOTPRESS_URL:-http://botpress:3000}
+
+      # Ollama Configuration
+      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://ollama:11434}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3}
     volumes:
       - ./app:/app/app
       - ricagent_api_logs:/app/logs
+    ports:
+      - "8000:8000"
     expose:
       - "8000"
     networks:
@@ -56,6 +62,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      ollama:
+        condition: service_started
     healthcheck:
       test: [ "CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')" ]
       interval: 30s
@@ -118,6 +126,18 @@ services:
       postgres:
         condition: service_healthy
 
+  # Ollama Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ricagent-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - ricago-net
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:latest
@@ -139,6 +159,8 @@ volumes:
   ricagent_botpress_data:
     driver: local
   ricagent_api_logs:
+    driver: local
+  ollama_data:
     driver: local
 
 # Connect to existing network
