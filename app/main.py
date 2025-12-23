@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import customer_router, user_router, demo_router, email_router, ollama_router, chat_router
+from app.routers import customer_router, user_router, demo_router, email_router, ollama_router, chat_router, widget_router
 from app.configs import migration
 import json
 
@@ -19,6 +19,7 @@ app.include_router(demo_router.demoRoutes)
 app.include_router(email_router.emailRoutes)
 app.include_router(ollama_router.aiAgentsRoutes)
 app.include_router(chat_router.chat_router)
+app.include_router(widget_router.widgetRoutes)
 
 origins = settings.server.cors_urls
 
