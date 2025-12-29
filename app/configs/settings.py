@@ -46,8 +46,8 @@ class OllamaSettings(BaseSettings):
 
 class BotpressSettings(BaseSettings):
     botpress_url: str = Field(default="http://botpress:3000", alias="BOTPRESS_URL")
-    webhook_id: str = Field(default="ric", alias="BOTPRESS_WEBHOOK_ID")
-    bot_id: str = Field(default="ric", alias="BOTPRESS_BOT_ID")
+    webhook_id: str = Field(default="test", alias="BOTPRESS_WEBHOOK_ID")
+    bot_id: str = Field(default="test", alias="BOTPRESS_BOT_ID")
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 

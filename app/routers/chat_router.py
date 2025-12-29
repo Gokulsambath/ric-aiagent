@@ -85,56 +85,61 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
         
         # 6. Stream response
         async def event_generator():
-            full_content = ""
-            choices_data = None
-            
-            # Stream from provider
-            async for chunk in strategy.stream_message(request.message, str(thread.id)): # Use thread.id for provider session if appropriate
-                # Check if this chunk contains choices marker
-                if "__CHOICES__" in chunk and "__END_CHOICES__" in chunk:
-                    # Extract choices JSON
-                    start = chunk.index("__CHOICES__") + len("__CHOICES__")
-                    end = chunk.index("__END_CHOICES__")
-                    choices_json = chunk[start:end]
-                    
-                    try:
-                        choices_data = json.loads(choices_json)
-                        # Don't include the marker in the content
-                        chunk = chunk[:chunk.index("__CHOICES__")]
-                    except:
-                        pass
+            try:
+                full_content = ""
+                choices_data = None
                 
-                full_content += chunk
-                # Send SSE formatted chunk with choices if available
-                sse_data = {
-                    'response': chunk, 
-                    'session_id': str(session.id),
-                    'thread_id': str(thread.id)
-                }
-                if choices_data:
-                    sse_data['choices'] = choices_data
-                yield f"data: {json.dumps(sse_data)}\n\n"
-            
-            # 7. Save Assistant Message after streaming completes
-            if full_content:
-                assistant_msg = ChatMessage(
-                    thread_id=thread.id,
-                    role="assistant",
-                    content=full_content
-                )
-                db.add(assistant_msg)
-                db.commit()
-
-                # Cache Assistant Message to Redis
-                try:
-                    redis_key = f"chat_history:{session.id}"
-                    if thread.id:
-                        redis_key = f"chat_history:{session.id}:{thread.id}"
+                # Stream from provider
+                async for chunk in strategy.stream_message(request.message, str(thread.id)): # Use thread.id for provider session if appropriate
+                    # Check if this chunk contains choices marker
+                    if "__CHOICES__" in chunk and "__END_CHOICES__" in chunk:
+                        # Extract choices JSON
+                        start = chunk.index("__CHOICES__") + len("__CHOICES__")
+                        end = chunk.index("__END_CHOICES__")
+                        choices_json = chunk[start:end]
+                        
+                        try:
+                            choices_data = json.loads(choices_json)
+                            # Don't include the marker in the content
+                            chunk = chunk[:chunk.index("__CHOICES__")]
+                        except:
+                            pass
                     
-                    redis_msg = {"role": "assistant", "content": full_content}
-                    await redis_service.rpush(redis_key, redis_msg, max_len=50, ttl=86400)
-                except Exception as e:
-                    logger.error(f"Redis Cache Error (Assistant): {e}")
+                    full_content += chunk
+                    # Send SSE formatted chunk with choices if available
+                    sse_data = {
+                        'response': chunk, 
+                        'session_id': str(session.id),
+                        'thread_id': str(thread.id)
+                    }
+                    if choices_data:
+                        sse_data['choices'] = choices_data
+                    yield f"data: {json.dumps(sse_data)}\n\n"
+                
+                # 7. Save Assistant Message after streaming completes
+                if full_content:
+                    assistant_msg = ChatMessage(
+                        thread_id=thread.id,
+                        role="assistant",
+                        content=full_content
+                    )
+                    db.add(assistant_msg)
+                    db.commit()
+
+                    # Cache Assistant Message to Redis
+                    try:
+                        redis_key = f"chat_history:{session.id}"
+                        if thread.id:
+                            redis_key = f"chat_history:{session.id}:{thread.id}"
+                        
+                        redis_msg = {"role": "assistant", "content": full_content}
+                        await redis_service.rpush(redis_key, redis_msg, max_len=50, ttl=86400)
+                    except Exception as e:
+                        logger.error(f"Redis Cache Error (Assistant): {e}")
+
+            except Exception as e:
+                logger.error(f"Streaming Error: {str(e)}")
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
         
         return StreamingResponse(
             event_generator(),

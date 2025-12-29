@@ -7,6 +7,14 @@
             "permissions": [
                 "chat"
             ]
+        },
+        {
+            "key": "Key1",
+            "name": "Widget Default Key",
+            "enabled": true,
+            "permissions": [
+                "chat"
+            ]
         }
     ]
 }
