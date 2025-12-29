@@ -20,7 +20,7 @@ def run_migrations():
         command.upgrade(alembic_cfg, "head")
         
         # Seed initial data if needed
-        from app.db.seed_widget_config import seed_widget_config
+        from app.utils.seed_widget_config import seed_widget_config
         seed_widget_config()
         
         logger.info("Database migration and seeding completed successfully.")

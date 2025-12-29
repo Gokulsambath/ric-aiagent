@@ -64,3 +64,6 @@ rerequests
 requests
 redis>=5.0.0
 alembic
+pandas>=2.0.0
+openpyxl>=3.1.0
+APScheduler>=3.10.0

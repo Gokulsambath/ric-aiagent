@@ -6,7 +6,7 @@ from pathlib import Path
 from app.schema.api_config_dto import APIKeyConfig
 
 class DatabaseSettings(BaseSettings):
-    database_type: str = Field(default="sqlite", alias="DATABASE_TYPE")
+    database_type: str = Field(default="postgresql", alias="DATABASE_TYPE")
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
     
     postgres_driver: str = Field(default="postgresql+psycopg2", alias="POSTGRES_DRIVER")
@@ -20,10 +20,8 @@ class DatabaseSettings(BaseSettings):
         if self.database_url:
             return self.database_url
         
-        if self.database_type == "postgresql":
-            return f"{self.postgres_driver}://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        
-        return "sqlite:///app/db/ricaiagent.db"
+        # Default to PostgreSQL
+        return f"{self.postgres_driver}://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
 class MailSettings(BaseSettings):
     mail_username: str = Field(alias="MAIL_USERNAME")

@@ -10,7 +10,8 @@ DATABASE_TYPE = settings.db.database_type
 
 if settings.db.database_url:
     connection_url = settings.db.database_url
-elif DATABASE_TYPE == "postgresql":
+else:
+    # Default to PostgreSQL
     connection_url = URL.create(
         drivername="postgresql+psycopg2",
         username=settings.db.postgres_user,
@@ -18,11 +19,6 @@ elif DATABASE_TYPE == "postgresql":
         host=settings.db.postgres_host,
         port=settings.db.postgres_port,
         database=settings.db.postgres_db
-    )
-else:
-    connection_url = URL.create(
-        drivername="sqlite",
-        database="app/db/ricaiagent.db"
     )
 
 # Create engine with connection pooling
