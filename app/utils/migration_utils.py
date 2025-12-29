@@ -19,7 +19,11 @@ def run_migrations():
         # Run the migration
         command.upgrade(alembic_cfg, "head")
         
-        logger.info("Database migration completed successfully.")
+        # Seed initial data if needed
+        from app.db.seed_widget_config import seed_widget_config
+        seed_widget_config()
+        
+        logger.info("Database migration and seeding completed successfully.")
     except Exception as e:
         logger.error(f"Database migration failed: {e}")
         # Depending on requirements, we might want to raise the error to crash the app

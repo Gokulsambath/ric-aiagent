@@ -53,8 +53,8 @@ services:
     volumes:
       - ./app:/app/app
       - ricagent_api_logs:/app/logs
-    ports:
-      - "${API_PORT:-5500}:8000"
+    # ports:
+    #   - "${API_PORT:-5500}:8000"
     expose:
       - "8000"
     networks:
@@ -163,7 +163,7 @@ services:
     container_name: ricagent-widget
     restart: unless-stopped
     ports:
-      - "4000:4000"
+      - "3001:4000"
     environment:
       - NEXT_PUBLIC_CHAT_API_URL=http://localhost:${API_PORT:-5500}
     networks:
@@ -177,7 +177,7 @@ services:
     container_name: ricagent-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "5500:5500"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:

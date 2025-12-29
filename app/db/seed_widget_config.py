@@ -24,13 +24,7 @@ def seed_widget_config():
     db = DBSession()
     
     try:
-        # Check if data already exists
-        existing = db.query(WidgetConfig).first()
-        if existing:
-            print("Widget config data already exists. Skipping seed.")
-            return
-        
-        # Define initial widget configurations
+        # Individual key seeding logic
         configs = [
             {
                 "tenant_id": "ric-tenant",
@@ -58,13 +52,22 @@ def seed_widget_config():
             }
         ]
         
-        # Insert configurations
+        seeded_count = 0
         for config_data in configs:
-            widget_config = WidgetConfig(**config_data)
-            db.add(widget_config)
+            existing = db.query(WidgetConfig).filter(WidgetConfig.secret_key == config_data["secret_key"]).first()
+            if not existing:
+                widget_config = WidgetConfig(**config_data)
+                db.add(widget_config)
+                seeded_count += 1
+            else:
+                # Optionally update existing if needed, but for now just skip
+                print(f"  - Key {config_data['secret_key']} already exists. Skipping.")
         
-        db.commit()
-        print(f"✅ Successfully seeded {len(configs)} widget configurations")
+        if seeded_count > 0:
+            db.commit()
+            print(f"✅ Successfully seeded {seeded_count} new widget configurations")
+        else:
+            print("No new widget configurations to seed.")
         
         # Print summary
         all_configs = db.query(WidgetConfig).all()
