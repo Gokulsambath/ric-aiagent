@@ -12,12 +12,14 @@ class BotpressService(ChatStrategy):
         self.bot_id = settings.botpress.bot_id
         # Webhook ID is not strictly needed for the Converse API unless verified via that channel
         
-    async def send_message(self, message: str, session_id: str, metadata: dict = None) -> ChatResponse:
+    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> ChatResponse:
         """
         Sends a message to the Botpress Converse API.
         POST /api/v1/bots/{botId}/converse/{userId}
         """
-        url = f"{self.base_url}/api/v1/bots/{self.bot_id}/converse/{session_id}"
+        # Use passed bot_id or fallback to default
+        target_bot_id = bot_id or self.bot_id
+        url = f"{self.base_url}/api/v1/bots/{target_bot_id}/converse/{session_id}"
         
         payload = {
             "type": "text",
@@ -79,13 +81,18 @@ class BotpressService(ChatStrategy):
             logger.error(f"Botpress API Error: {str(e)}")
             raise Exception(f"Failed to communicate with Botpress: {str(e)}")
     
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None):
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None):
         """
         Stream a message to Botpress and yield text chunks.
         Botpress doesn't natively support streaming, so we fetch the full response
         and simulate streaming by yielding it character by character or word by word.
         """
-        url = f"{self.base_url}/api/v1/bots/{self.bot_id}/converse/{session_id}"
+        # Use passed bot_id or fallback to default
+        target_bot_id = bot_id or self.bot_id
+        url = f"{self.base_url}/api/v1/bots/{target_bot_id}/converse/{session_id}"
+        
+        print(f"BotpressService: Sending message to bot_id: {target_bot_id} (requested: {bot_id}, default: {self.bot_id})", flush=True)
+        print(f"BotpressService: Target URL: {url}", flush=True)
         
         payload = {
             "type": "text",

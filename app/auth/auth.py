@@ -57,7 +57,7 @@ def auth_middleware(request: Request):
 
 async def auth_middleware_call(request: Request, call_next):
     # Skip auth for docs, openapi endpoints, and widget validation (uses own key auth)
-    exempt_paths = ["/docs", "/redoc", "/openapi.json", "/", "/api/widget/validate"]
+    exempt_paths = ["/docs", "/redoc", "/openapi.json", "/", "/api/widget/validate", "/chat", "/chat/"]
     if request.method == "OPTIONS" or request.url.path in exempt_paths:
         return await call_next(request)
     

@@ -33,6 +33,10 @@ COPY --from=builder /root/.local /root/.local
 # Copy application code
 COPY . .
 
+# Copy startup script
+COPY start.sh .
+RUN chmod +x start.sh
+
 # Create directory for SQLite database (fallback)
 RUN mkdir -p app/db
 
@@ -46,5 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/')" || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application via start script
+CMD ["./start.sh"]

@@ -9,6 +9,7 @@ widgetRoutes = APIRouter(prefix="/api/widget", tags=["widget"])
 @widgetRoutes.get("/validate")
 async def validate_widget_key(
     key: str,
+    widgetId: str = None,
     db: Session = Depends(get_db)
 ) -> Dict:
     """
@@ -16,6 +17,7 @@ async def validate_widget_key(
     
     Args:
         key: Widget secret key
+        widgetId: Optional widget (tenant) ID
         
     Returns:
         Tenant configuration if valid
@@ -23,12 +25,20 @@ async def validate_widget_key(
     Raises:
         403: If key is invalid or tenant is inactive
     """
-    if not key:
-        raise HTTPException(status_code=400, detail="Missing API Key")
+    if not key and not widgetId:
+        raise HTTPException(status_code=400, detail="Missing API Key or Widget ID")
     
-    # Find widget config by secret key
+    # Find widget config
     repo = WidgetConfigRepository(db)
-    widget_config = repo.get_by_secret_key(key)
+    widget_config = None
+    
+    # Prioritize widgetId (tenant_id) if provided
+    if widgetId:
+        widget_config = repo.get_by_tenant_id(widgetId)
+        
+    # Fallback to key if widgetId lookup failed or wasn't provided
+    if not widget_config and key:
+        widget_config = repo.get_by_secret_key(key)
     
     if not widget_config:
         raise HTTPException(status_code=403, detail="Invalid API Key")
