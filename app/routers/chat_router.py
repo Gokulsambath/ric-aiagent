@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from app.services.chat_factory import ChatFactory
-from app.schema.chat_schema import ChatRequest, ChatResponse, ChatThreadResponse, ThreadListResponse
+from app.schema.chat_schema import ChatRequest, ChatResponse, ChatThreadResponse, ThreadListResponse, ChatMessageResponse
 from app.models.chat_models import ChatSession, ChatMessage, ChatThread
 from app.models.user_model import User
 from app.configs.database import get_db
@@ -163,7 +163,7 @@ async def list_threads(session_id: int, db: Session = Depends(get_db)):
         threads=session.threads
     )
 
-@chat_router.get("/threads/{thread_id}/messages")
+@chat_router.get("/threads/{thread_id}/messages", response_model=List[ChatMessageResponse])
 async def list_messages(thread_id: int, db: Session = Depends(get_db)):
     thread = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
     if not thread:

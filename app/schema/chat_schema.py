@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 
 class ChatRequest(BaseModel):
@@ -24,7 +24,21 @@ class ChatThreadResponse(BaseModel):
     title: Optional[str] = None
     created_at: Any
     updated_at: Any
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class ThreadListResponse(BaseModel):
     session_id: int
     threads: List[ChatThreadResponse]
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    thread_id: int
+    role: str
+    content: str
+    created_at: Any
+    updated_at: Any
+    
+    model_config = ConfigDict(from_attributes=True)
