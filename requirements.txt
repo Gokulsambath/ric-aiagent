@@ -62,3 +62,5 @@ pyttsx3
 SpeechRecognition
 rerequests
 requests
+redis>=5.0.0
+alembic

@@ -138,6 +138,39 @@ services:
     networks:
       - ricago-net
 
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: ricagent-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - ricago-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Widget (Next.js)
+  ricagent-widget:
+    build:
+      context: ../ric-aiagent-widget
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CHAT_API_URL: http://localhost:${API_PORT:-5500}
+    container_name: ricagent-widget
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NEXT_PUBLIC_CHAT_API_URL=http://localhost:${API_PORT:-5500}
+    networks:
+      - ricago-net
+    depends_on:
+      - ricagent-api
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:latest

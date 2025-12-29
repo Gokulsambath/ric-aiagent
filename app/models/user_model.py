@@ -7,5 +7,5 @@ from app.models.base_model import BaseModel
 class User(BaseModel):
     __tablename__ = "users"
     
-    name = Column(String(255), nullable = False)
+    name = Column(String(255), nullable = False, index = True)
     email = Column(String(100), nullable = True, unique = True)

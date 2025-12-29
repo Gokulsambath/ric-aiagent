@@ -1,5 +1,5 @@
 from app.configs.database import Base, engine
-from app.models.chat_models import ChatSession, ChatMessage
+from app.models.chat_models import ChatSession, ChatMessage, ChatThread
 from app.models.widget_config_model import WidgetConfig
 from app.models.user_model import User
 from app.models.customer_model import Customer

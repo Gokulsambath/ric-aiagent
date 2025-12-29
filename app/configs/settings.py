@@ -9,11 +9,21 @@ class DatabaseSettings(BaseSettings):
     database_type: str = Field(default="sqlite", alias="DATABASE_TYPE")
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
     
+    postgres_driver: str = Field(default="postgresql+psycopg2", alias="POSTGRES_DRIVER")
     postgres_user: str = Field(default="ricagoapi_user", alias="POSTGRES_USER")
     postgres_password: str = Field(default="changeme123", alias="POSTGRES_PASSWORD")
     postgres_host: str = Field(default="localhost", alias="POSTGRES_HOST")
     postgres_port: int = Field(default=5432, alias="POSTGRES_PORT")
     postgres_db: str = Field(default="ricagoapi", alias="POSTGRES_DB")
+
+    def get_db_url(self) -> str:
+        if self.database_url:
+            return self.database_url
+        
+        if self.database_type == "postgresql":
+            return f"{self.postgres_driver}://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        
+        return "sqlite:///app/db/ricaiagent.db"
 
 class MailSettings(BaseSettings):
     mail_username: str = Field(alias="MAIL_USERNAME")
@@ -79,6 +89,14 @@ def load_api_keys_from_file() -> List[APIKeyConfig]:
 class SecuritySettings(BaseSettings):
     api_keys: List[APIKeyConfig] = Field(default_factory=load_api_keys_from_file)
 
+class RedisSettings(BaseSettings):
+    redis_host: str = Field(default="localhost", alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, alias="REDIS_PORT")
+    redis_db: int = Field(default=0, alias="REDIS_DB")
+    redis_password: Optional[str] = Field(default=None, alias="REDIS_PASSWORD")
+
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
+
 class AppSettings(BaseSettings):
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     mail: MailSettings = Field(default_factory=MailSettings)
@@ -86,6 +104,7 @@ class AppSettings(BaseSettings):
     botpress: BotpressSettings = Field(default_factory=BotpressSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
