@@ -14,9 +14,39 @@ class OllamaStreamChat:
         self.ollama_url_genapi = settings.ollama.ollama_api_url + "/api/generate"
         self.ollama_url_chatapi = settings.ollama.ollama_api_url + "/api/chat"
 
-    @classmethod
-    def getMessageHistory(cls):
-        return cls._msgHistory
+    # _msgHistory: List[Dict[str, str]] = [] # Removed in favor of Redis
+
+    def __init__(self, repo: OllamaRepo):
+        self.model_name = settings.ollama.default_model
+        self.messages = []
+        self.ollama_url_genapi = settings.ollama.ollama_api_url + "/api/generate"
+        self.ollama_url_chatapi = settings.ollama.ollama_api_url + "/api/chat"
+        # Import redis service here or at top level, avoided circular import issues usually
+        from app.services.redis_service import redis_service
+        self.redis = redis_service
+
+    async def get_message_history(self, session_id: str, thread_id: str = None) -> List[Dict[str, str]]:
+        if not session_id:
+            return []
+        
+        # Key now includes thread_id if present, allowing per-thread history
+        key = f"chat_history:{session_id}"
+        if thread_id:
+            key = f"chat_history:{session_id}:{thread_id}"
+
+        # Parse returned items if they are JSON strings
+        items = await self.redis.lrange(key, 0, -1)
+        # Ensure items are dicts
+        history = []
+        for item in items:
+            if isinstance(item, str):
+                try:
+                    history.append(json.loads(item))
+                except json.JSONDecodeError:
+                    pass
+            elif isinstance(item, dict):
+                 history.append(item)
+        return history
     
     def getModelName(self):
         return self.model_name
@@ -24,9 +54,21 @@ class OllamaStreamChat:
     def setModelName(self, model):
         self.model_name = model
 
-    @classmethod
-    def appendMessageHistory(cls, usr_role: str, usr_msg: str):
-        cls._msgHistory.append(MsgDTO(role=usr_role, content=usr_msg))
+    async def append_message_history(self, session_id: str, usr_role: str, usr_msg: str, thread_id: str = None):
+        if not session_id:
+            return
+            
+        key = f"chat_history:{session_id}"
+        if thread_id:
+            key = f"chat_history:{session_id}:{thread_id}"
+
+        msg = MsgDTO(role=usr_role, content=usr_msg).model_dump()
+        # "store limited things": max 50 messages, TTL 24h
+        await self.redis.rpush(key, msg, max_len=50, ttl=86400)
+        
+        # Note: Database persistence should also happen here if required "everywhere"
+        # However, OllamaRepo currently lacks specific message saving methods linked to ChatThread/ChatSession models.
+        # For full consistency, we rely on the main ChatRouter flow where DB persistence is handled via ChatRepository.
     
     ######################################################################################################################
     #                                   Methods related to Ollama Generate API                                           #
@@ -154,7 +196,8 @@ class OllamaStreamChat:
                                     if assistant_response_parts:
                                         full_assistant_response = "".join(assistant_response_parts)
                                         # Store user message and assistant response in history
-                                        self.appendMessageHistory("assistant", full_assistant_response)
+                                        if chat_request.session_id:
+                                             await self.append_message_history(chat_request.session_id, "assistant", full_assistant_response, chat_request.thread_id)
 
                                     # Include metadata if available
                                     metadata = {}
