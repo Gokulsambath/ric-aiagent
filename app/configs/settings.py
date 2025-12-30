@@ -6,7 +6,7 @@ from pathlib import Path
 from app.schema.api_config_dto import APIKeyConfig
 
 class DatabaseSettings(BaseSettings):
-    database_type: str = Field(default="sqlite", alias="DATABASE_TYPE")
+    database_type: str = Field(default="postgresql", alias="DATABASE_TYPE")
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
     
     postgres_driver: str = Field(default="postgresql+psycopg2", alias="POSTGRES_DRIVER")
@@ -20,10 +20,8 @@ class DatabaseSettings(BaseSettings):
         if self.database_url:
             return self.database_url
         
-        if self.database_type == "postgresql":
-            return f"{self.postgres_driver}://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        
-        return "sqlite:///app/db/ricaiagent.db"
+        # Default to PostgreSQL
+        return f"{self.postgres_driver}://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
 class MailSettings(BaseSettings):
     mail_username: str = Field(alias="MAIL_USERNAME")
@@ -46,8 +44,8 @@ class OllamaSettings(BaseSettings):
 
 class BotpressSettings(BaseSettings):
     botpress_url: str = Field(default="http://botpress:3000", alias="BOTPRESS_URL")
-    webhook_id: str = Field(default="ric", alias="BOTPRESS_WEBHOOK_ID")
-    bot_id: str = Field(default="ric", alias="BOTPRESS_BOT_ID")
+    webhook_id: str = Field(default="test", alias="BOTPRESS_WEBHOOK_ID")
+    bot_id: str = Field(default="test", alias="BOTPRESS_BOT_ID")
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
@@ -65,7 +63,9 @@ class ServerSettings(BaseSettings):
             "http://localhost:8000",
             "https://ricagoapi.onrender.com",
             "https://api.ricagoapi.com",
-            "http://localhost:4000"
+            "http://localhost:4000",
+            "http://106.51.109.172",
+            "http://106.51.109.172:3001"
         ], 
         alias="CORS_URLS"
     )

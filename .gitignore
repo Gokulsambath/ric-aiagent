@@ -52,3 +52,11 @@ logs/
 postgres_data/
 botpress_data/
 api_logs/
+
+# Imports folder - exclude Excel files but keep structure
+imports/*.xlsx
+imports/*.xls
+imports/processed/*.xlsx
+imports/processed/*.xls
+imports/failed/*.xlsx
+imports/failed/*.xls
