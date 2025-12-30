@@ -137,7 +137,6 @@ async def chat_endpoint(
         strategy = ChatFactory.get_strategy(request.provider)
         
         # Resolve Bot ID if available
-        bot_id = None
         if request.app_id:
             # Try to find config by tenant_id or secret_key
             config = db.query(WidgetConfig).filter(WidgetConfig.tenant_id == request.app_id).first()
