@@ -63,7 +63,9 @@ class ServerSettings(BaseSettings):
             "http://localhost:8000",
             "https://ricagoapi.onrender.com",
             "https://api.ricagoapi.com",
-            "http://localhost:4000"
+            "http://localhost:4000",
+            "http://106.51.109.172",
+            "http://106.51.109.172:3001"
         ], 
         alias="CORS_URLS"
     )
