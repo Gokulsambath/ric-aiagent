@@ -92,7 +92,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:3000/status || exit 1" ]
+      test: [ "CMD-SHELL", "wget -q --spider http://localhost:3000/botpress/ || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -185,16 +185,16 @@ services:
     networks:
       - ricago-net
 
-# Named volumes for data persistence (Unique to this project)
+# Named volumes for data persistence
 volumes:
   ricagent_postgres_data:
-    driver: local
+    name: ricagent_postgres_data
   ricagent_botpress_data:
-    driver: local
+    name: ricagent_botpress_data
   ricagent_api_logs:
-    driver: local
+    name: ricagent_api_logs
   ollama_data:
-    driver: local
+    name: ollama_data
 
 # Connect to existing network
 networks:
