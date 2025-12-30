@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     provider: Optional[str] = Field("botpress", description="Chat provider to use (default: botpress)")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional context or metadata")
     is_new_chat: Optional[bool] = Field(False, description="Flag to force a new session or thread")
+    app_id: Optional[str] = Field(None, description="App ID or Widget ID (used to identify bot configuration)")
 
 class ChatResponse(BaseModel):
     session_id: str

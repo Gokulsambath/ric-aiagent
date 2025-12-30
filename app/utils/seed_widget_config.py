@@ -4,12 +4,23 @@ Seed script to populate initial widget configuration data.
 Run this script after running migrations to set up the default widget keys.
 """
 
-from app.configs.database import DBSession
 from app.models.widget_config_model import WidgetConfig
 import json
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 def seed_widget_config():
     """Seed initial widget configuration data"""
+    # Create local engine from Env functionality to bypass potential app config issues
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        print("DATABASE_URL not found in environment!")
+        return
+
+    print(f"Using DATABASE_URL for seed: {db_url}")
+    engine = create_engine(db_url)
+    DBSession = sessionmaker(bind=engine)
     db = DBSession()
     
     try:
@@ -20,6 +31,7 @@ def seed_widget_config():
                 "tenant_name": "Ricago Website",
                 "secret_key": "Key1",
                 "active": True,
+                "bot_id": "ric",
                 "allowed_origins": json.dumps(["*"])
             },
             {
@@ -27,6 +39,7 @@ def seed_widget_config():
                 "tenant_name": "Client CMS",
                 "secret_key": "KeyCms",
                 "active": True,
+                "bot_id": "ric-cms",
                 "allowed_origins": json.dumps(["*"])
             },
             {
@@ -34,6 +47,7 @@ def seed_widget_config():
                 "tenant_name": "App Hub",
                 "secret_key": "KeyAppHub",
                 "active": False,  # Inactive by default
+                "bot_id": None,
                 "allowed_origins": json.dumps(["*"])
             }
         ]

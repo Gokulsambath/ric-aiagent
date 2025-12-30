@@ -9,6 +9,7 @@ class WidgetConfig(BaseModel):
     tenant_name = Column(String(255), nullable=False)
     secret_key = Column(String(255), nullable=False, index=True)
     active = Column(Boolean, default=True, nullable=False)
+    bot_id = Column(String(50), nullable=True)  # Botpress Bot ID
     allowed_origins = Column(Text, nullable=False, default='["*"]')  # Stored as JSON string
     
     # Index for fast lookup by secret_key
