@@ -7,7 +7,7 @@ services:
     container_name: ricagent-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ric-aiagent}
+      POSTGRES_DB: ${POSTGRES_DB:-ricagoapi}
       POSTGRES_USER: ${POSTGRES_USER:-ricagent_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -37,7 +37,7 @@ services:
     environment:
       # Database Configuration
       DATABASE_TYPE: ${DATABASE_TYPE:-postgresql}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${POSTGRES_DB:-ric-aiagent}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ricagoapi_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${POSTGRES_DB:-ricagoapi}
 
       # Application Configuration
       API_HOST: ${API_HOST:-0.0.0.0}
