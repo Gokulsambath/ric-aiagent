@@ -91,14 +91,24 @@ class BotpressService(ChatStrategy):
         target_bot_id = bot_id or self.bot_id
         url = f"{self.base_url}/api/v1/bots/{target_bot_id}/converse/{session_id}"
         
-        print(f"BotpressService: Sending message to bot_id: {target_bot_id} (requested: {bot_id}, default: {self.bot_id})", flush=True)
-        print(f"BotpressService: Target URL: {url}", flush=True)
-        
-        payload = {
-            "type": "text",
-            "text": message
-        }
-        
+        # Check if message is a JSON string (for choice payloads)
+        payload = {}
+        try:
+            if message.strip().startswith("{"):
+                json_payload = json.loads(message)
+                # If it looks like a valid payload structure, use it directly/merged
+                if isinstance(json_payload, dict):
+                    payload = json_payload
+        except Exception as e:
+            # Not valid json, treat as text
+            pass
+            
+        if not payload:
+             payload = {
+                "type": "text",
+                "text": message
+            }
+            
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(url, json=payload, timeout=10.0)
