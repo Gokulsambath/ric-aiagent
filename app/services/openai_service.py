@@ -1,5 +1,6 @@
 from app.services.chat_strategy import ChatStrategy
 from app.schema.chat_schema import ChatResponse
+from app.constants import ENTERPRISE_COMPLIANCE_SYSTEM_PROMPT, DEFAULT_TEMPERATURE
 from typing import AsyncGenerator
 import aiohttp
 import json
@@ -44,14 +45,17 @@ class OpenAIService(ChatStrategy):
         payload = {
             "model": self.model,
             "messages": [
+                {"role": "system", "content": ENTERPRISE_COMPLIANCE_SYSTEM_PROMPT},
                 {"role": "user", "content": message}
             ],
             "stream": True,
-            "temperature": 0.7
+            "temperature": DEFAULT_TEMPERATURE
         }
         
         try:
-            async with aiohttp.ClientSession() as session:
+            # Disable SSL verification for testing/internal calls
+            connector = aiohttp.TCPConnector(ssl=False)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{self.api_url}/api/chat",  # Ollama Cloud uses /api/chat not /chat/completions
                     headers=headers,
@@ -65,38 +69,51 @@ class OpenAIService(ChatStrategy):
                         yield f"Error: API returned status {response.status}"
                         return
                     
-                    # Read SSE stream
+                    # Read response stream
+                    logger.debug("Starting to read response stream...")
+                    chunk_count = 0
                     async for line in response.content:
                         if line:
+                            chunk_count += 1
                             decoded_line = line.decode('utf-8').strip()
                             
-                            if decoded_line.startswith('data: '):
-                                data_str = decoded_line[6:]
+                            if not decoded_line:
+                                continue
+                            
+                            # Ollama Cloud returns raw JSON, not SSE format
+                            try:
+                                data = json.loads(decoded_line)
+                                logger.debug(f"Parsed JSON chunk {chunk_count}")
                                 
-                                if data_str == '[DONE]':
-                                    logger.info("Stream complete")
+                                # Check if done
+                                if data.get('done', False):
+                                    logger.debug("Stream complete (done=true)")
                                     break
+                                
+                                # Extract content from various possible fields
+                                content = None
+                                
+                                # Try 'content' field first (actual response)
+                                if 'message' in data and 'content' in data['message']:
+                                    content = data['message']['content']
+                                    if content:
+                                        logger.debug(f"Found content: {content[:50]}")
+                                # Try OpenAI format
+                                elif 'choices' in data and len(data['choices']) > 0:
+                                    delta = data['choices'][0].get('delta', {})
+                                    content = delta.get('content', '')
+                                    if content:
+                                        logger.debug(f"Found content: {content[:50]}")
+                                # Note: We intentionally skip 'thinking' field as it's internal reasoning
+                                
+                                if content:
+                                    yield content
                                     
-                                try:
-                                    data = json.loads(data_str)
-                                    
-                                    # Ollama Cloud uses 'message' format like local Ollama
-                                    if 'message' in data:
-                                        content = data['message'].get('content', '')
-                                        if content:
-                                            logger.debug(f"Yielding content: {content[:50]}")
-                                            yield content
-                                    # Fallback to OpenAI format
-                                    elif 'choices' in data and len(data['choices']) > 0:
-                                        delta = data['choices'][0].get('delta', {})
-                                        content = delta.get('content', '')
-                                        if content:
-                                            logger.debug(f"Yielding content: {content[:50]}")
-                                            yield content
-                                            
-                                except json.JSONDecodeError as e:
-                                    logger.warning(f"Failed to parse JSON: {e}, line: {data_str[:100]}")
-                                    continue
+                            except json.JSONDecodeError as e:
+                                logger.warning(f"Failed to parse JSON: {e}, line: {decoded_line[:100]}")
+                                continue
+                    
+                    logger.debug(f"Stream ended, total chunks: {chunk_count}")
                                     
         except aiohttp.ClientError as e:
             logger.error(f"HTTP error: {e}")

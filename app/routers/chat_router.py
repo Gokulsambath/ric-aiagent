@@ -12,6 +12,7 @@ import logging
 import json
 
 from app.services.redis_service import redis_service
+from app.constants import REDIS_CHAT_HISTORY_MAX_LEN, REDIS_CHAT_HISTORY_TTL_SECONDS
 
 chat_router = APIRouter(prefix="/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ async def chat_endpoint(
             
             # Helper dict for redis storage
             redis_msg = {"role": "user", "content": request.message}
-            await redis_service.rpush(redis_key, redis_msg, max_len=50, ttl=86400)
+            await redis_service.rpush(redis_key, redis_msg, max_len=REDIS_CHAT_HISTORY_MAX_LEN, ttl=REDIS_CHAT_HISTORY_TTL_SECONDS)
         except Exception as e:
             logger.error(f"Redis Cache Error (User): {e}")
         
@@ -197,7 +198,7 @@ async def chat_endpoint(
                             redis_key = f"chat_history:{session.id}:{thread.id}"
                         
                         redis_msg = {"role": "assistant", "content": full_content}
-                        await redis_service.rpush(redis_key, redis_msg, max_len=50, ttl=86400)
+                        await redis_service.rpush(redis_key, redis_msg, max_len=REDIS_CHAT_HISTORY_MAX_LEN, ttl=REDIS_CHAT_HISTORY_TTL_SECONDS)
                     except Exception as e:
                         logger.error(f"Redis Cache Error (Assistant): {e}")
 

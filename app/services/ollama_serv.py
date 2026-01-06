@@ -1,20 +1,13 @@
 import aiohttp
 from app.schema.ollama_dto import OllamaPrompt as OllamaDTO, OllamaChatRequest as ChatRequestDTO, Message as MsgDTO
 from app.repository.ollama_repo import OllamaStreamChat as OllamaRepo
+from app.constants import REDIS_CHAT_HISTORY_MAX_LEN, REDIS_CHAT_HISTORY_TTL_SECONDS
 from typing import AsyncGenerator, Dict, Any, List
 import json
 from app.configs.settings import settings
 
 class OllamaStreamChat:
     _msgHistory: List[Dict[str, str]] = []
-
-    def __init__(self, repo: OllamaRepo):
-        self.model_name = settings.ollama.default_model
-        self.messages = []
-        self.ollama_url_genapi = settings.ollama.ollama_api_url + "/api/generate"
-        self.ollama_url_chatapi = settings.ollama.ollama_api_url + "/api/chat"
-
-    # _msgHistory: List[Dict[str, str]] = [] # Removed in favor of Redis
 
     def __init__(self, repo: OllamaRepo):
         self.model_name = settings.ollama.default_model
@@ -63,8 +56,8 @@ class OllamaStreamChat:
             key = f"chat_history:{session_id}:{thread_id}"
 
         msg = MsgDTO(role=usr_role, content=usr_msg).model_dump()
-        # "store limited things": max 50 messages, TTL 24h
-        await self.redis.rpush(key, msg, max_len=50, ttl=86400)
+        # Store limited messages with TTL
+        await self.redis.rpush(key, msg, max_len=REDIS_CHAT_HISTORY_MAX_LEN, ttl=REDIS_CHAT_HISTORY_TTL_SECONDS)
         
         # Note: Database persistence should also happen here if required "everywhere"
         # However, OllamaRepo currently lacks specific message saving methods linked to ChatThread/ChatSession models.
@@ -151,7 +144,7 @@ class OllamaStreamChat:
         """Stream chat completion with history"""
         
         # Use provided model or default
-        model = self.model_name #chat_request.model or self.model_name
+        model = chat_request.model or self.model_name
         
         # Prepare payload for Ollama chat API
         payload = {
@@ -225,7 +218,7 @@ class OllamaStreamChat:
      # Public generator methods
     async def generate_chat(self, chat_request: ChatRequestDTO) -> AsyncGenerator[str, None]:
         """Public method for streaming chat completion"""
-        if chat_request.model is None and chat_request.model == "":
+        if not chat_request.model:
             chat_request.model = self.model_name
 
         async with aiohttp.ClientSession() as session:
@@ -284,7 +277,7 @@ class OllamaStreamChat:
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.chat_url, json=payload) as response:
+                async with session.post(self.ollama_url_chatapi, json=payload) as response:
                     response.raise_for_status()
                     result = await response.json()
                     
