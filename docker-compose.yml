@@ -47,9 +47,14 @@ services:
       # Botpress Integration (optional)
       BOTPRESS_URL: ${BOTPRESS_URL:-http://botpress:3000}
 
-      # Ollama Configuration
+      # Ollama Configuration (Local - not used when using cloud)
       OLLAMA_API_URL: ${OLLAMA_API_URL:-http://ollama:11434}
-      DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-gpt-oss:128b-cloud}
+      
+      # OpenAI-Compatible API (Ollama Cloud)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI}
+      OPENAI_API_URL: ${OPENAI_API_URL:-https://ollama.com}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-oss:120b}
     volumes:
       - ./app:/app/app
       - ricagent_api_logs:/app/logs

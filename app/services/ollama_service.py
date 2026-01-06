@@ -5,6 +5,7 @@ from app.schema.ollama_dto import OllamaChatRequest, Message
 from app.repository.ollama_repo import OllamaStreamChat as OllamaRepo
 from typing import AsyncGenerator
 import json
+import logging
 
 class OllamaService(ChatStrategy):
     def __init__(self):
@@ -14,7 +15,7 @@ class OllamaService(ChatStrategy):
          self.repo = OllamaRepo() # Repo init is empty
          self.inner_service = OllamaStreamChat(self.repo)
 
-    async def send_message(self, message: str, session_id: str, metadata: dict = None) -> ChatResponse:
+    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> ChatResponse:
         """
         Send message (non-streaming)
         """
@@ -65,10 +66,13 @@ class OllamaService(ChatStrategy):
             provider="ollama"
         )
 
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None) -> AsyncGenerator[str, None]:
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> AsyncGenerator[str, None]:
         """
         Stream message
         """
+        logger = logging.getLogger(__name__)
+        logger.info(f"OllamaService.stream_message called with message: {message[:50]}...")
+        
         # Again, ChatRouter passes thread_id as session_id.
         
         # To make Ollama 'aware' of context without changing Router signature yet:
@@ -87,7 +91,13 @@ class OllamaService(ChatStrategy):
             thread_id=None 
         )
         
+        logger.info(f"Calling inner_service.generate_chat with model: {self.inner_service.model_name}")
+        chunk_count = 0
+        
         async for chunk in self.inner_service.generate_chat(request):
+            chunk_count += 1
+            logger.info(f"Received chunk #{chunk_count}: {chunk[:100]}")
+            
             # chunk format from inner_service: "data: {...}\n\n"
             # ChatRouter expects raw text chunks or standard stream?
             # ChatRouter: 
@@ -108,6 +118,15 @@ class OllamaService(ChatStrategy):
                     if data_str:
                          data = json.loads(data_str)
                          if 'response' in data:
-                             yield data['response']
-                except:
+                             text_content = data['response']
+                             logger.info(f"Yielding text: {text_content}")
+                             yield text_content
+                         else:
+                             logger.warning(f"No 'response' in data: {data}")
+                except Exception as e:
+                    logger.error(f"Error parsing chunk: {e}, chunk: {chunk}")
                     pass
+            else:
+                logger.warning(f"Chunk doesn't start with 'data: ': {chunk[:50]}")
+        
+        logger.info(f"Finished streaming, total chunks: {chunk_count}")
