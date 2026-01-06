@@ -37,8 +37,15 @@ class MailSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
 class OllamaSettings(BaseSettings):
-    default_model: str = Field(default="llama3", alias="DEFAULT_MODEL")
+    default_model: str = Field(default="gpt-oss:128b-cloud", alias="DEFAULT_MODEL")
     ollama_api_url: str = Field(default="http://localhost:11343", alias="OLLAMA_API_URL")
+    
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
+
+class OpenAISettings(BaseSettings):
+    api_key: str = Field(default="e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI", alias="OPENAI_API_KEY")
+    api_url: str = Field(default="https://ollama.com", alias="OPENAI_API_URL") 
+    model: str = Field(default="gpt-oss:120b", alias="OPENAI_MODEL")
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
@@ -101,6 +108,7 @@ class AppSettings(BaseSettings):
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     mail: MailSettings = Field(default_factory=MailSettings)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
+    openai: OpenAISettings = Field(default_factory=OpenAISettings)
     botpress: BotpressSettings = Field(default_factory=BotpressSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)

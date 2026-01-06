@@ -163,11 +163,25 @@ class BotpressService(ChatStrategy):
                     else:
                         yield "\n" + line
                 
+                # Check if any choice is AI_ASSISTANT related
+                ai_assistant_selected = False
+                if all_choices:
+                    for choice in all_choices:
+                        choice_value = choice.get("value", "").upper()
+                        # Check for various AI assistant choice values
+                        if choice_value in ["AI_ASSISTANT", "ASK_AI", "ASK_RICA", "TALK_AI"]:
+                            ai_assistant_selected = True
+                            break
+                
                 # If we have choices, yield them as a special marker
                 if all_choices:
                     import json as json_lib
                     choices_json = json_lib.dumps(all_choices)
                     yield f"\n__CHOICES__{choices_json}__END_CHOICES__"
+                
+                # If AI Assistant was one of the options, signal provider switch capability
+                if ai_assistant_selected:
+                    yield f"\n__SWITCH_PROVIDER__openai__END_SWITCH__"
                 
         except httpx.HTTPError as e:
             logger.error(f"Botpress API Error: {str(e)}")
