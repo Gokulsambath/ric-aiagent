@@ -38,7 +38,7 @@ class MailSettings(BaseSettings):
 
 class OllamaSettings(BaseSettings):
     default_model: str = Field(default="llama3", alias="DEFAULT_MODEL")
-    ollama_api_url: str = Field(default="http://localhost:11434", alias="OLLAMA_API_URL")
+    ollama_api_url: str = Field(default="http://localhost:11343", alias="OLLAMA_API_URL")
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
