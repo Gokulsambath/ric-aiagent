@@ -12,11 +12,21 @@ class OllamaStreamChat:
     def __init__(self, repo: OllamaRepo):
         self.model_name = settings.ollama.default_model
         self.messages = []
-        self.ollama_url_genapi = settings.ollama.ollama_api_url + "/api/generate"
-        self.ollama_url_chatapi = settings.ollama.ollama_api_url + "/api/chat"
+        self.ollama_url_genapi = settings.ollama.ollama_api_url.rstrip('/') + "/api/generate"
+        self.ollama_url_chatapi = settings.ollama.ollama_api_url.rstrip('/') + "/api/chat"
+        # Use OpenAI key as cloud key if hitting ollama.com
+        self.api_key = settings.openai.api_key
+        self.is_cloud = "ollama.com" in settings.ollama.ollama_api_url
+        
         # Import redis service here or at top level, avoided circular import issues usually
         from app.services.redis_service import redis_service
         self.redis = redis_service
+
+    def _get_headers(self):
+        headers = {"Content-Type": "application/json"}
+        if self.is_cloud:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
     async def get_message_history(self, session_id: str, thread_id: str = None) -> List[Dict[str, str]]:
         if not session_id:
@@ -76,7 +86,7 @@ class OllamaStreamChat:
         }
         #print("Ollama Service - Streaming chat with payload: ", payload)
         try:
-            async with session.post(self.ollama_url_genapi, json=payload) as response:
+            async with session.post(self.ollama_url_genapi, json=payload, headers=self._get_headers()) as response:
                 response.raise_for_status()
                 
                 async for line in response.content:
@@ -161,7 +171,7 @@ class OllamaStreamChat:
         }
         
         try:
-            async with session.post(self.ollama_url_chatapi, json=payload) as response:
+            async with session.post(self.ollama_url_chatapi, json=payload, headers=self._get_headers()) as response:
                 response.raise_for_status()
                 
                 assistant_response_parts = []
@@ -277,7 +287,7 @@ class OllamaStreamChat:
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.ollama_url_chatapi, json=payload) as response:
+                async with session.post(self.ollama_url_chatapi, json=payload, headers=self._get_headers()) as response:
                     response.raise_for_status()
                     result = await response.json()
                     
@@ -298,9 +308,9 @@ class OllamaStreamChat:
     async def health_check(self):
         try:
             # Test connection to Ollama
-            ollamaUrl = settings.ollama.ollama_api_url +  "/api/tags"
+            ollamaUrl = settings.ollama.ollama_api_url.rstrip('/') +  "/api/tags"
             async with aiohttp.ClientSession() as session:
-                async with session.get(ollamaUrl) as response:
+                async with session.get(ollamaUrl, headers=self._get_headers()) as response:
                     if response.status == 200:
                         return {"status": "healthy", "ollama": "connected"}
                     else:

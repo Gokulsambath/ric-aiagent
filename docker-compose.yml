@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ricagoapi}
-      POSTGRES_USER: ${POSTGRES_USER:-ricagent_user}
+      POSTGRES_USER: ${POSTGRES_USER:-ricagoapi_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
@@ -20,7 +20,7 @@ services:
     networks:
       - ricago-net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ricagent_user} -d ${POSTGRES_DB:-ric-aiagent}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ricagoapi_user} -d ${POSTGRES_DB:-ricagoapi}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,6 +30,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      cache_from:
+        - ricagent-api:latest
+      target: ""
+    image: ricagent-api:latest
     container_name: ricagent-api
     restart: unless-stopped
     env_file:
@@ -48,15 +52,20 @@ services:
       BOTPRESS_URL: ${BOTPRESS_URL:-http://botpress:3000}
 
       # Ollama Configuration (Local - not used when using cloud)
-      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://ollama:11434}
-      DEFAULT_MODEL: ${DEFAULT_MODEL:-gpt-oss:128b-cloud}
+      OLLAMA_API_URL: ${OLLAMA_API_URL:-https://ollama.com}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-gpt-oss:120b-cloud}
 
       # OpenAI-Compatible API (Ollama Cloud)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI}
       OPENAI_API_URL: ${OPENAI_API_URL:-https://ollama.com}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-oss:120b}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-oss:120b-cloud}
+
+      # Performance optimizations
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
     volumes:
-      - ./app:/app/app
+      # Only mount for development - remove for production
+      # - ./app:/app/app
       - ricagent_api_logs:/app/logs
     ports:
       - "${API_PORT:-5500}:8000"
