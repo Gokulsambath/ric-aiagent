@@ -35,6 +35,9 @@ class OpenAIService(ChatStrategy):
         Stream message using OpenAI-compatible API
         """
         logger.info(f"OpenAIService.stream_message called with message: {message[:50]}...")
+        logger.info(f"OpenAIService API URL: {self.api_url}")
+        logger.info(f"OpenAIService API Key: {self.api_key[:20]}...")
+        
         base_endpoint = self.api_url.rstrip('/')
         if "openai.com" in base_endpoint or "v1" in base_endpoint:
             url = f"{base_endpoint}/chat/completions"
@@ -61,6 +64,7 @@ class OpenAIService(ChatStrategy):
         }
         
         try:
+            chunk_count = 0
             connector = aiohttp.TCPConnector(ssl=False)
             async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(url, headers=headers, json=payload) as response:
@@ -101,6 +105,7 @@ class OpenAIService(ChatStrategy):
                                 content = data['response']
                                 
                             if content:
+                                chunk_count += 1
                                 yield content
                                 
                             if data.get('done', False):
