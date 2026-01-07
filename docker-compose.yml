@@ -212,6 +212,7 @@ services:
   promtail:
     image: grafana/promtail:latest
     container_name: ricagent-promtail
+    privileged: true
     restart: unless-stopped
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -273,11 +274,13 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://localhost:80/grafana/
+      - GF_SERVER_ROOT_URL=http://106.51.109.172/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./monitoring/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/provider.yaml
+      - ./monitoring/dashboards:/etc/grafana/dashboards
     networks:
       - ricago-net
     depends_on:
