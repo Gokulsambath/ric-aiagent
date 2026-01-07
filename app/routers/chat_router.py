@@ -58,6 +58,13 @@ async def chat_endpoint(
         print(f"DEBUG: Authentication Failed for key: {x_api_key}", flush=True)
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
+    print("=" * 80, flush=True)
+    print("📨 /CHAT ENDPOINT HIT!", flush=True)
+    print(f"📨 Message: {request.message}", flush=True)
+    print(f"📨 Provider: {request.provider}", flush=True)
+    print(f"📨 Email: {request.email}", flush=True)
+    print("=" * 80, flush=True)
+
     try:
         # Resolve Bot ID
         bot_id = None
@@ -135,7 +142,9 @@ async def chat_endpoint(
             logger.error(f"Redis Cache Error (User): {e}")
         
         # 5. Get appropriate strategy
+        print(f"🔍 Request provider: {request.provider}", flush=True)
         strategy = ChatFactory.get_strategy(request.provider)
+        print(f"🔍 Selected strategy: {type(strategy).__name__}", flush=True)
         
         # Resolve Bot ID if available
         if request.app_id:
@@ -152,6 +161,7 @@ async def chat_endpoint(
         async def event_generator():
             full_content = ""
             choices_data = None
+            acts_data = None
             
             try:
                 # Stream from provider
@@ -170,8 +180,24 @@ async def chat_endpoint(
                         except:
                             pass
                     
+                    # Check if this chunk contains acts data marker
+                    if "__ACTS_DATA__" in chunk and "__END_ACTS__" in chunk:
+                        # Extract acts JSON
+                        start = chunk.index("__ACTS_DATA__") + len("__ACTS_DATA__")
+                        end = chunk.index("__END_ACTS__")
+                        acts_json = chunk[start:end]
+                        
+                        try:
+                            acts_data = json.loads(acts_json)
+                            # Don't include the marker in the content
+                            chunk = chunk[:chunk.index("__ACTS_DATA__")]
+                            if acts_data:
+                                 pass
+                        except Exception as e:
+                            logger.error(f"Failed to parse acts data: {e}")
+                    
                     full_content += chunk
-                    # Send SSE formatted chunk with choices if available
+                    # Send SSE formatted chunk with choices and acts if available
                     sse_data = {
                         'response': chunk, 
                         'session_id': str(session.id),
@@ -179,6 +205,8 @@ async def chat_endpoint(
                     }
                     if choices_data:
                         sse_data['choices'] = choices_data
+                    if acts_data:
+                        sse_data['acts'] = acts_data
                     yield f"data: {json.dumps(sse_data)}\n\n"
                 
                 # 7. Save Assistant Message after streaming completes

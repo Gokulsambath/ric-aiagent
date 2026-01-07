@@ -135,3 +135,65 @@ class Acts(BaseRepository[ActsModel]):
             return [r[0] for r in results]
         finally:
             db.close()
+
+    def find_by_botpress_variables(
+        self, 
+        state: Optional[str] = None,
+        industry: Optional[str] = None,
+        employee_size: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Find acts based on Botpress user session variables.
+        Returns serialized dict representation for JSON streaming.
+        
+        Args:
+            state: State name from Botpress user.state
+            industry: Industry from Botpress user.industry
+            employee_size: Employee size from Botpress user.size
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of acts as dictionaries
+        """
+        db = self._get_db()
+        try:
+            query = db.query(ActsModel)
+            
+            # Apply filters based on available Botpress variables
+            if state:
+                query = query.filter(ActsModel.state == state)
+            
+            if industry:
+                query = query.filter(ActsModel.industry == industry)
+            
+            if employee_size:
+                # Match either the specific size OR "Applies to all"
+                query = query.filter(
+                    or_(
+                        ActsModel.employee_applicability == employee_size,
+                        ActsModel.employee_applicability == "Applies to all"
+                    )
+                )
+            
+            # Limit results
+            query = query.limit(limit)
+            
+            results = query.all()
+            
+            # Convert to dict for JSON serialization
+            return [
+                {
+                    'id': act.id,
+                    'state': act.state,
+                    'industry': act.industry,
+                    'company_type': act.company_type,
+                    'legislative_area': act.legislative_area,
+                    'central_acts': act.central_acts,
+                    'state_acts': act.state_acts,
+                    'employee_applicability': act.employee_applicability,
+                }
+                for act in results
+            ]
+        finally:
+            db.close()
