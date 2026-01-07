@@ -50,7 +50,7 @@ services:
       # Ollama Configuration (Local - not used when using cloud)
       OLLAMA_API_URL: ${OLLAMA_API_URL:-http://ollama:11434}
       DEFAULT_MODEL: ${DEFAULT_MODEL:-gpt-oss:128b-cloud}
-      
+
       # OpenAI-Compatible API (Ollama Cloud)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI}
       OPENAI_API_URL: ${OPENAI_API_URL:-https://ollama.com}
@@ -190,6 +190,100 @@ services:
     networks:
       - ricago-net
 
+  # ---------------------------------------------------------------------------
+  # Monitoring Stack
+  # ---------------------------------------------------------------------------
+
+  # Loki: Log Aggregation System
+  loki:
+    image: grafana/loki:latest
+    container_name: ricagent-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    networks:
+      - ricago-net
+
+  # Promtail: Log Collector (ships logs to Loki)
+  promtail:
+    image: grafana/promtail:latest
+    container_name: ricagent-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - ricago-net
+    depends_on:
+      - loki
+
+  # Prometheus: Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ricagent-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - ricago-net
+    depends_on:
+      - cadvisor
+
+  # cAdvisor: Container Metrics (CPU, Memory, Network)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: ricagent-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    networks:
+      - ricago-net
+
+  # Grafana: Visualization Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ricagent-grafana
+    restart: unless-stopped
+    ports:
+      - "3005:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:80/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    networks:
+      - ricago-net
+    depends_on:
+      - loki
+      - prometheus
+
 # Named volumes for data persistence
 volumes:
   ricagent_postgres_data:
@@ -200,6 +294,12 @@ volumes:
     name: ricagent_api_logs
   ollama_data:
     name: ollama_data
+  loki_data:
+    name: loki_data
+  prometheus_data:
+    name: prometheus_data
+  grafana_data:
+    name: grafana_data
 
 # Connect to existing network
 networks:
