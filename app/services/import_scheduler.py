@@ -29,23 +29,30 @@ class ImportScheduler:
             logger.warning("Scheduler is already running")
             return
         
-        # Add job with interval trigger
-        self.scheduler.add_job(
-            func=self.run_import_job,
-            trigger=IntervalTrigger(minutes=interval_minutes),
-            id='excel_import_job',
-            name='Excel Import Job',
-            replace_existing=True
-        )
-        
-        self.scheduler.start()
-        logger.info(f"Import scheduler started with {interval_minutes} minute interval")
+        try:
+            # Add job with interval trigger
+            self.scheduler.add_job(
+                func=self.run_import_job,
+                trigger=IntervalTrigger(minutes=interval_minutes),
+                id='excel_import_job',
+                name='Excel Import Job',
+                replace_existing=True
+            )
+            
+            self.scheduler.start()
+            logger.info(f"Import scheduler started with {interval_minutes} minute interval")
+        except Exception as e:
+            logger.error(f"Failed to start import scheduler: {str(e)}")
+            # Don't re-raise the exception to avoid crashing the application
     
     def stop_scheduler(self):
         """Stop the background scheduler"""
-        if self.scheduler.running:
-            self.scheduler.shutdown()
-            logger.info("Import scheduler stopped")
+        try:
+            if self.scheduler and self.scheduler.running:
+                self.scheduler.shutdown()
+                logger.info("Import scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping scheduler: {str(e)}")
     
     def run_import_job(self) -> Dict[str, Any]:
         """

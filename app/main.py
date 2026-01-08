@@ -14,6 +14,7 @@ async def lifespan(app: FastAPI):
     run_migrations()
     
     # Initialize and start the import scheduler
+    scheduler = None
     try:
         redis_service = RedisService()
         scheduler = get_scheduler(redis_service)
@@ -26,10 +27,11 @@ async def lifespan(app: FastAPI):
     
     # Shutdown: Stop the scheduler
     try:
-        scheduler.stop_scheduler()
-        print("Import scheduler stopped")
-    except:
-        pass
+        if scheduler is not None:
+            scheduler.stop_scheduler()
+            print("Import scheduler stopped")
+    except Exception as e:
+        print(f"Warning: Could not stop import scheduler: {e}")
 
 app = FastAPI(
     title = settings.server.api_name,
