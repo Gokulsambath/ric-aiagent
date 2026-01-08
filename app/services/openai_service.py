@@ -36,13 +36,24 @@ class OpenAIService(ChatStrategy):
         Stream message using OpenAI-compatible API
         """
         logger.info(f"OpenAIService.stream_message called with message: {message[:50]}...")
-        logger.info(f"Using model: {self.model}, API: {self.api_url}")
+        logger.info(f"OpenAIService API URL: {self.api_url}")
+        logger.info(f"OpenAIService API Key: {self.api_key[:20]}...")
+        
+        base_endpoint = self.api_url.rstrip('/')
+        if "openai.com" in base_endpoint or "v1" in base_endpoint:
+            url = f"{base_endpoint}/chat/completions"
+        else:
+            url = f"{base_endpoint}/api/chat"
+            
+        logger.info(f"Using model: {self.model}, Full URL: {url}")
         
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
         
+        # Determine payload format
+        is_openai = "completions" in url
         payload = {
             "model": self.model,
             "messages": [
@@ -54,65 +65,55 @@ class OpenAIService(ChatStrategy):
         }
         
         try:
-            # Disable SSL verification for testing/internal calls
+            chunk_count = 0
             connector = aiohttp.TCPConnector(ssl=False)
             async with aiohttp.ClientSession(connector=connector) as session:
-                async with session.post(
-                    f"{self.api_url}/api/chat",  # Ollama Cloud uses /api/chat not /chat/completions
-                    headers=headers,
-                    json=payload
-                ) as response:
-                    logger.info(f"OpenAI API response status: {response.status}")
+                async with session.post(url, headers=headers, json=payload) as response:
+                    logger.info(f"Provider API response status: {response.status}")
                     
                     if response.status != 200:
                         error_text = await response.text()
-                        logger.error(f"OpenAI API error: {error_text}")
+                        logger.error(f"Provider API error: {error_text}")
                         yield f"Error: API returned status {response.status}"
                         return
                     
-                    # Read response stream
-                    logger.debug("Starting to read response stream...")
-                    chunk_count = 0
                     async for line in response.content:
-                        if line:
-                            chunk_count += 1
-                            decoded_line = line.decode('utf-8').strip()
+                        if not line:
+                            continue
                             
-                            if not decoded_line:
-                                continue
+                        decoded_line = line.decode('utf-8').strip()
+                        if not decoded_line:
+                            continue
                             
-                            # Ollama Cloud returns raw JSON, not SSE format
-                            try:
-                                data = json.loads(decoded_line)
-                                logger.debug(f"Parsed JSON chunk {chunk_count}")
+                        # Handle SSE format (data: {...})
+                        if decoded_line.startswith("data: "):
+                            if decoded_line == "data: [DONE]":
+                                break
+                            decoded_line = decoded_line[6:].strip()
+                            
+                        try:
+                            data = json.loads(decoded_line)
+                            content = None
+                            
+                            # Standard OpenAI format
+                            if 'choices' in data and len(data['choices']) > 0:
+                                delta = data['choices'][0].get('delta', {})
+                                content = delta.get('content', '')
+                            # Ollama / Custom format
+                            elif 'message' in data and 'content' in data['message']:
+                                content = data['message']['content']
+                            elif 'response' in data: # Some providers use top-level 'response'
+                                content = data['response']
                                 
-                                # Check if done
-                                if data.get('done', False):
-                                    logger.debug("Stream complete (done=true)")
-                                    break
+                            if content:
+                                chunk_count += 1
+                                yield content
                                 
-                                # Extract content from various possible fields
-                                content = None
+                            if data.get('done', False):
+                                break
                                 
-                                # Try 'content' field first (actual response)
-                                if 'message' in data and 'content' in data['message']:
-                                    content = data['message']['content']
-                                    if content:
-                                        logger.debug(f"Found content: {content[:50]}")
-                                # Try OpenAI format
-                                elif 'choices' in data and len(data['choices']) > 0:
-                                    delta = data['choices'][0].get('delta', {})
-                                    content = delta.get('content', '')
-                                    if content:
-                                        logger.debug(f"Found content: {content[:50]}")
-                                # Note: We intentionally skip 'thinking' field as it's internal reasoning
-                                
-                                if content:
-                                    yield content
-                                    
-                            except json.JSONDecodeError as e:
-                                logger.warning(f"Failed to parse JSON: {e}, line: {decoded_line[:100]}")
-                                continue
+                        except json.JSONDecodeError:
+                            continue
                     
                     logger.debug(f"Stream ended, total chunks: {chunk_count}")
                                     

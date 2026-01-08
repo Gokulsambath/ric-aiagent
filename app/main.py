@@ -63,3 +63,7 @@ app.middleware("http")(auth_middleware_call)
 @app.get("/")
 def root():
     return {"message": f"Welcome to {app.title} {app.version}! {app.description}"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "ricagent-api"}
