@@ -55,6 +55,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI}
       OPENAI_API_URL: ${OPENAI_API_URL:-https://ollama.com}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-oss:120b}
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./app:/app/app
       - ricagent_api_logs:/app/logs
