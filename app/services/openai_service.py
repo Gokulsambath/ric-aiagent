@@ -1,7 +1,7 @@
 from app.services.chat_strategy import ChatStrategy
 from app.schema.chat_schema import ChatResponse
 from app.constants import ENTERPRISE_COMPLIANCE_SYSTEM_PROMPT, DEFAULT_TEMPERATURE
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List
 import aiohttp
 import json
 import logging
@@ -15,22 +15,23 @@ class OpenAIService(ChatStrategy):
         self.api_url = settings.openai.api_url
         self.model = settings.openai.model
         
-    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> ChatResponse:
+    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None) -> ChatResponse:
         """
         Send message (non-streaming)
         """
         full_response = ""
-        async for chunk in self.stream_message(message, session_id, metadata, bot_id):
+        async for chunk in self.stream_message(message, session_id, metadata, bot_id, system_prompt):
             full_response += chunk
             
         return ChatResponse(
             session_id=session_id,
+            thread_id=session_id,
             role="assistant",
             content=full_response,
             provider="openai"
         )
 
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> AsyncGenerator[str, None]:
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None) -> AsyncGenerator[str, None]:
         """
         Stream message using OpenAI-compatible API
         """
@@ -56,7 +57,7 @@ class OpenAIService(ChatStrategy):
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": ENTERPRISE_COMPLIANCE_SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt or ENTERPRISE_COMPLIANCE_SYSTEM_PROMPT},
                 {"role": "user", "content": message}
             ],
             "stream": True,
@@ -122,3 +123,4 @@ class OpenAIService(ChatStrategy):
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             yield f"Error: {str(e)}"
+
