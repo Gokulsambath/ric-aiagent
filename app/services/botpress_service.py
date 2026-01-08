@@ -1,8 +1,10 @@
 import httpx
 from app.services.chat_strategy import ChatStrategy
+from app.services.classification_service import ClassificationService
 from app.schema.chat_schema import ChatResponse
 from app.configs.settings import settings
 import logging
+from app.services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +139,54 @@ class BotpressService(ChatStrategy):
         """
         # Use passed bot_id or fallback to default
         target_bot_id = bot_id or self.bot_id
+        
+        # --- LLM INTERCEPTION START ---
+        # Heuristic Logic 1: Organization Type
+        redis_key_org = f"ric:session:{session_id}:expecting_org_type"
+        is_expecting_org = await redis_service.get(redis_key_org)
+        
+        # Heuristic Logic 2: Industry Type
+        redis_key_industry = f"ric:session:{session_id}:expecting_industry_type"
+        is_expecting_industry = await redis_service.get(redis_key_industry)
+        
+        # Heuristic Logic 3: Employee Size
+        redis_key_size = f"ric:session:{session_id}:expecting_employee_size"
+        is_expecting_size = await redis_service.get(redis_key_size)
+        
+        if not message.strip().startswith("{"):
+            try:
+                classification_service = ClassificationService()
+                
+                if is_expecting_org:
+                    logger.info(f"Intercepting expected 'custom-orgtype' input: {message}")
+                    normalized_message = await classification_service.classify_organization(message)
+                    logger.info(f"Normalized '{message}' to '{normalized_message}'")
+                    if normalized_message:
+                         message = normalized_message
+                    await redis_service.delete(redis_key_org)
+                    
+                elif is_expecting_industry:
+                    logger.info(f"Intercepting expected 'custom-industry' input: {message}")
+                    normalized_message = await classification_service.classify_industry(message)
+                    logger.info(f"Normalized '{message}' to '{normalized_message}'")
+                    if normalized_message:
+                         message = normalized_message
+                    await redis_service.delete(redis_key_industry)
+
+                elif is_expecting_size:
+                    logger.info(f"Intercepting expected 'custom-size' input: {message}")
+                    normalized_message = await classification_service.classify_employee_size(message)
+                    logger.info(f"Normalized '{message}' to '{normalized_message}'")
+                    if normalized_message:
+                         message = normalized_message
+                    await redis_service.delete(redis_key_size)
+                    
+            except Exception as e:
+                logger.error(f"Error in LLM interception: {e}")
+        # --- LLM INTERCEPTION END ---
+
+        url = f"{self.base_url}/api/v1/bots/{target_bot_id}/converse/{session_id}"
+
         url = f"{self.base_url}/api/v1/bots/{target_bot_id}/converse/{session_id}"
         
         # Check if message is a JSON string (for choice payloads)
@@ -257,7 +307,34 @@ class BotpressService(ChatStrategy):
                 logger.info(f"Final bot_parts: {bot_parts}")
                 logger.info(f"All choices: {all_choices}")
                 
-                full_text = "\n".join(bot_parts) if bot_parts else "No response from bot"
+                # HEURISTIC TRIGGER CHECK
+                # 1. Check for Organization Type Trigger
+                trigger_phrases_org = ["Please enter your organization type", "enter your organization type"]
+                
+                # 2. Check for Industry Type Trigger
+                trigger_phrases_industry = ["Please enter your industry type", "enter your industry type"]
+                
+                # 3. Check for Employee Size Trigger
+                trigger_phrases_size = ["Please enter your employee size", "enter your employee size"]
+                
+                full_bot_text = "\n".join(bot_parts) if bot_parts else ""
+                
+                if any(phrase in full_bot_text for phrase in trigger_phrases_org):
+                    redis_key = f"ric:session:{session_id}:expecting_org_type"
+                    logger.info(f"Setting Org Expectation Flag: {redis_key}")
+                    await redis_service.set(redis_key, "true", ttl=600)
+
+                if any(phrase in full_bot_text for phrase in trigger_phrases_industry):
+                    redis_key = f"ric:session:{session_id}:expecting_industry_type"
+                    logger.info(f"Setting Industry Expectation Flag: {redis_key}")
+                    await redis_service.set(redis_key, "true", ttl=600)
+
+                if any(phrase in full_bot_text for phrase in trigger_phrases_size):
+                    redis_key = f"ric:session:{session_id}:expecting_employee_size"
+                    logger.info(f"Setting Size Expectation Flag: {redis_key}")
+                    await redis_service.set(redis_key, "true", ttl=600)
+                
+                full_text = full_bot_text if full_bot_text else "No response from bot"
                 
                 # Stream text content line by line
                 lines = full_text.split("\n")
