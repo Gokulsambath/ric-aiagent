@@ -1,11 +1,19 @@
 version: '3.8'
 
+# Default logging configuration for all services (1 month retention)
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "10"
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: ricagent-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ricagoapi}
       POSTGRES_USER: ${POSTGRES_USER:-ricagoapi_user}
@@ -36,6 +44,7 @@ services:
     image: ricagent-api:latest
     container_name: ricagent-api
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -94,6 +103,7 @@ services:
     image: botpress/server:latest
     container_name: ricagent-botpress
     restart: unless-stopped
+    logging: *default-logging
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
       BP_MODULE_NLU_DUCKLINGURL: http://duckling:8000
@@ -180,6 +190,7 @@ services:
         NEXT_PUBLIC_CHAT_API_URL: http://106.51.109.172
     container_name: ricagent-widget
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3001:4000"
     environment:
@@ -202,6 +213,7 @@ services:
     image: nginx:latest
     container_name: ricagent-nginx
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "80:80"
     volumes:
@@ -220,6 +232,7 @@ services:
     image: grafana/loki:latest
     container_name: ricagent-loki
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -289,6 +302,7 @@ services:
     image: grafana/grafana:latest
     container_name: ricagent-grafana
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3005:3000"
     environment:
