@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.routers import customer_router, user_router, demo_router, email_router, ollama_router, chat_router, widget_router, acts_router, lead_router
+from app.routers import customer_router, user_router, demo_router, email_router, ollama_router, chat_router, widget_router, acts_router, lead_router, monthly_updates_router
+
+
 from app.auth.auth import auth_middleware_call
 from app.configs.settings import settings
 from app.utils.migration_utils import run_migrations
@@ -47,6 +49,7 @@ app.include_router(chat_router.chat_router)
 app.include_router(widget_router.widgetRoutes)
 app.include_router(acts_router.actsRoutes)
 app.include_router(lead_router.lead_router)
+app.include_router(monthly_updates_router.monthlyUpdatesRoutes)
 
 origins = settings.server.cors_urls
 

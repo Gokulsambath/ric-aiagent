@@ -196,8 +196,29 @@ async def chat_endpoint(
                         except Exception as e:
                             logger.error(f"Failed to parse acts data: {e}")
                     
+                    # Check if this chunk contains daily updates data marker
+                    daily_updates_data = None
+                    if "__DAILY_UPDATES__" in chunk and "__END_DAILY__" in chunk:
+                        # Extract daily updates JSON
+                        start = chunk.index("__DAILY_UPDATES__") + len("__DAILY_UPDATES__")
+                        end = chunk.index("__END_DAILY__")
+                        daily_json = chunk[start:end]
+                        
+                        try:
+                            daily_updates_data = json.loads(daily_json)
+                            # Don't include the marker in the content
+                            chunk = chunk[:chunk.index("__DAILY_UPDATES__")]
+                            logger.info(f"Parsed daily updates data: {len(daily_updates_data.get('updates', []))} updates")
+                        except Exception as e:
+                            logger.error(f"Failed to parse daily updates data: {e}")
+                    
+                    # Check if this chunk contains provider switch marker
+                    if "__SWITCH_PROVIDER__" in chunk and "__END_SWITCH__" in chunk:
+                        # Don't include the marker in the content - just strip it out
+                        chunk = chunk[:chunk.index("__SWITCH_PROVIDER__")]
+                    
                     full_content += chunk
-                    # Send SSE formatted chunk with choices and acts if available
+                    # Send SSE formatted chunk with choices, acts, and daily updates if available
                     sse_data = {
                         'response': chunk, 
                         'session_id': str(session.id),
@@ -207,6 +228,8 @@ async def chat_endpoint(
                         sse_data['choices'] = choices_data
                     if acts_data:
                         sse_data['acts'] = acts_data
+                    if daily_updates_data:
+                        sse_data['dailyUpdates'] = daily_updates_data
                     yield f"data: {json.dumps(sse_data)}\n\n"
                 
                 # 7. Save Assistant Message after streaming completes
