@@ -4,7 +4,7 @@ from app.services.classification_service import ClassificationService
 from app.schema.chat_schema import ChatResponse
 from app.configs.settings import settings
 import logging
-from app.services.redis_service import redis_service
+from app.services.redis_service import redis_service, RedisService
 
 logger = logging.getLogger(__name__)
 
@@ -421,6 +421,72 @@ class BotpressService(ChatStrategy):
                     import json as json_lib
                     acts_json = json_lib.dumps(acts_data)
                     yield f"\n__ACTS_DATA__{acts_json}__END_ACTS__"
+                
+                # Check for RIC_DAILY_UPDATES workflow trigger
+                daily_updates_data = None
+                # More flexible trigger detection to match various Botpress message formats
+                trigger_phrases_daily = [
+                    "RIC_DAILY_UPDATES",
+                    "latest regulatory updates",
+                    "here are the latest regulatory",
+                    "regulatory update",
+                    "corporate laws",  # Category indicator
+                    "taxation",  # Category indicator
+                    "labour laws"  # Category indicator
+                ]
+                
+                # Check if message contains update categories (strong indicator it's the daily updates response)
+                has_categories = "**Corporate Laws**" in full_text or "**Taxation**" in full_text or "**Labour Laws**" in full_text
+                has_trigger = any(phrase.lower() in full_text.lower() for phrase in trigger_phrases_daily)
+                
+                if has_trigger or has_categories:
+                    try:
+                        print(f"🔔 Detected RIC_DAILY_UPDATES trigger!", flush=True)
+                        
+                        from app.repository.monthly_updates_repo import MonthlyUpdates as MonthlyUpdatesRepo
+                        from app.services.monthly_updates_serv import MonthlyUpdates as MonthlyUpdatesService
+                        from app.services.monthly_updates_scheduler import get_monthly_updates_scheduler
+                        
+                        # Initialize service
+                        redis_svc = RedisService()
+                        scheduler = get_monthly_updates_scheduler(redis_svc)
+                        repo = MonthlyUpdatesRepo()
+                        updates_service = MonthlyUpdatesService(repo, scheduler)
+                        
+                        # Fetch latest 5 updates
+                        updates = updates_service.get_daily_updates(limit=5)
+                        
+                        # Group by category
+                        grouped = {}
+                        for update in updates:
+                            category = update.get('category', 'Other')
+                            if category not in grouped:
+                                grouped[category] = {
+                                    'category': category,
+                                    'count': 0,
+                                    'updates': []
+                                }
+                            grouped[category]['count'] += 1
+                            grouped[category]['updates'].append(update)
+                        
+                        if updates:
+                            daily_updates_data = {
+                                'total': len(updates),
+                                'grouped_by_category': grouped,
+                                'updates': updates
+                            }
+                            print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
+                    except Exception as e:
+                        logger.error(f"Error fetching daily updates: {str(e)}")
+                        import traceback
+                        print(f"❌ Daily updates error: {traceback.format_exc()}", flush=True)
+                
+                # If we have daily updates data, yield it with markers
+                if daily_updates_data:
+                    import json as json_lib
+                    daily_json = json_lib.dumps(daily_updates_data)
+                    yield f"\n__DAILY_UPDATES__{daily_json}__END_DAILY__"
+
                 
                 # Check if any choice is AI_ASSISTANT related
                 ai_assistant_selected = False
