@@ -188,6 +188,14 @@ services:
       - ricago-net
     depends_on:
       - ricagent-api
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
 
   # Nginx Reverse Proxy
   nginx:
