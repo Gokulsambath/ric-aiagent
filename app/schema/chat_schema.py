@@ -43,3 +43,8 @@ class ChatMessageResponse(BaseModel):
     updated_at: Any
     
     model_config = ConfigDict(from_attributes=True)
+
+class UserUpdateRequest(BaseModel):
+    current_email: str
+    new_email: str
+    name: Optional[str] = None
