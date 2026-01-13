@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from app.services.chat_factory import ChatFactory
-from app.schema.chat_schema import ChatRequest, ChatResponse, ChatThreadResponse, ThreadListResponse, ChatMessageResponse
+from app.schema.chat_schema import ChatRequest, ChatResponse, ChatThreadResponse, ThreadListResponse, ChatMessageResponse, UserUpdateRequest
 from app.models.chat_models import ChatSession, ChatMessage, ChatThread
 from app.models.user_model import User
 from app.models.widget_config_model import WidgetConfig
@@ -291,3 +291,36 @@ async def list_messages(thread_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Thread not found")
     
     return thread.messages
+
+@chat_router.put("/user/update")
+async def update_user(request: UserUpdateRequest, db: Session = Depends(get_db)):
+    # Find existing user (Guest)
+    user = db.query(User).filter(User.email == request.current_email).first()
+    if not user:
+        # If no guest user found, maybe they are already the new user?
+        existing_new = db.query(User).filter(User.email == request.new_email).first()
+        if existing_new:
+             return {"message": "User already exists", "user_id": existing_new.id}
+        raise HTTPException(status_code=404, detail="Current user not found")
+    
+    # Check if new email already exists (edge case)
+    existing_new = db.query(User).filter(User.email == request.new_email).first()
+    if existing_new:
+        # Move sessions from Guest to Real.
+        sessions = db.query(ChatSession).filter(ChatSession.user_id == user.id).all()
+        for s in sessions:
+            s.user_id = existing_new.id
+        
+        # Delete the guest user since we migrated their sessions
+        db.delete(user)
+        db.commit()
+        return {"message": "Merged guest session to existing user", "user_id": existing_new.id}
+        
+    # Just update email
+    user.email = request.new_email
+    if request.name:
+        user.name = request.name
+        
+    db.commit()
+    db.refresh(user)
+    return {"message": "User updated successfully", "user_id": user.id}
