@@ -24,6 +24,9 @@ from app.models.demo_model import Demo
 from app.models.email_model import Email
 from app.models.ollama_model import OllamaAgent
 from app.models.widget_config_model import WidgetConfig
+from app.models.lead_model import Lead
+from app.models.monthly_updates_model import MonthlyUpdates
+from app.models.acts_model import Acts
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

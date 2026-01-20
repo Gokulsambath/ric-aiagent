@@ -33,6 +33,7 @@ class MailSettings(BaseSettings):
     mail_ssl_tls: bool = Field(default=True, alias="MAIL_SSL_TLS")
     use_credentials: bool = Field(default=True, alias="USE_CREDENTIALS")
     validate_certs: bool = Field(default=True, alias="VALIDATE_CERTS")
+    mail_to: str = Field(default="rica@ricago.com", alias="MAIL_TO")
 
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
@@ -71,6 +72,7 @@ class ServerSettings(BaseSettings):
             "https://ricagoapi.onrender.com",
             "https://api.ricagoapi.com",
             "http://localhost:4000",
+            "http://127.0.0.1:4000",
             "http://106.51.109.172",
             "http://106.51.109.172:3001"
         ], 
