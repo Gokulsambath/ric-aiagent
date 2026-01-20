@@ -73,8 +73,8 @@ class ServerSettings(BaseSettings):
             "https://api.ricagoapi.com",
             "http://localhost:4000",
             "http://127.0.0.1:4000",
-            "http://106.51.109.172",
-            "http://106.51.109.172:3001"
+            "https://dev.ricago.in",
+            "https://dev.ricago.in:3001"
         ], 
         alias="CORS_URLS"
     )

@@ -107,7 +107,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
       BP_MODULE_NLU_DUCKLINGURL: http://duckling:8000
-      EXTERNAL_URL: http://106.51.109.172/botpress
+      EXTERNAL_URL: https://dev.ricago.in/botpress
       BP_PRODUCTION: ${BP_PRODUCTION:-false}
     volumes:
       - ricagent_botpress_data:/botpress/data
@@ -187,14 +187,14 @@ services:
       context: ../ric-aiagent-widget
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_CHAT_API_URL: http://106.51.109.172
+        NEXT_PUBLIC_CHAT_API_URL: https://dev.ricago.in
     container_name: ricagent-widget
     restart: unless-stopped
     logging: *default-logging
     ports:
       - "3001:4000"
     environment:
-      - NEXT_PUBLIC_CHAT_API_URL=http://106.51.109.172
+      - NEXT_PUBLIC_CHAT_API_URL=https://dev.ricago.in
     networks:
       - ricago-net
     depends_on:
@@ -218,7 +218,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../ssl:/ssl:ro
     depends_on:
       - ricagent-api
     networks:
@@ -310,7 +311,7 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=http://106.51.109.172/grafana/
+      - GF_SERVER_ROOT_URL=https://dev.ricago.in/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana_data:/var/lib/grafana
