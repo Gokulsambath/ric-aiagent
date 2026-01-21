@@ -73,6 +73,18 @@ services:
       REDIS_PORT: 6379
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-oss:120b-cloud}
 
+      # Mail Configuration (SendGrid)
+      MAIL_USERNAME: ${MAIL_USERNAME:-apikey}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-rinoshastanley13@gmail.com}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.sendgrid.net}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
+      MAIL_SSL_TLS: ${MAIL_SSL_TLS:-false}
+      USE_CREDENTIALS: ${USE_CREDENTIALS:-true}
+      VALIDATE_CERTS: ${VALIDATE_CERTS:-true}
+      MAIL_TO: ${MAIL_TO:-rica@ricago.com}
+
       # Performance optimizations
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
