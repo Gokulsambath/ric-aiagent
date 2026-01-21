@@ -40,9 +40,9 @@ ENV PATH=/root/.local/bin:$PATH
 # Create directory for SQLite database (fallback)
 RUN mkdir -p app/db
 
-# Copy startup script first (changes less frequently than app code)
-COPY start.sh .
-RUN chmod +x start.sh
+# Copy startup and migration scripts (changes less frequently than app code)
+COPY start.sh migration_manager.sh ./
+RUN chmod +x start.sh migration_manager.sh
 
 # Copy alembic config and migrations (changes less frequently)
 COPY alembic.ini .

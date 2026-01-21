@@ -3,17 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.routers import customer_router, user_router, demo_router, email_router, ollama_router, chat_router, widget_router, acts_router, lead_router, monthly_updates_router
 
-
 from app.auth.auth import auth_middleware_call
 from app.configs.settings import settings
-from app.utils.migration_utils import run_migrations
 from app.services.import_scheduler import get_scheduler
 from app.services.redis_service import RedisService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Run migrations programmatically using Alembic
-    run_migrations()
+    # Note: Migrations are now handled by the container startup script
+    # No need to run migrations programmatically here
     
     # Initialize and start the import scheduler
     scheduler = None

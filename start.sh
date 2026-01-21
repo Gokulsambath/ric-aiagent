@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Function to check if database is ready
+# Function to check if database is ready  
 check_db_ready() {
     python -c "from app.configs.database import get_db; next(get_db())" 2>/dev/null
 }
@@ -13,12 +13,17 @@ while ! check_db_ready; do
 done
 echo "Database connection established."
 
-echo "Running database migration..."
-# Using -u for unbuffered output to see logs in real-time
-alembic upgrade head
-
-echo "Seeding database..."
+echo "Seeding database first..."
 python -u -m app.utils.seed_widget_config
+
+echo "Running database migration with enhanced error handling..."
+# Use the migration manager for robust migration handling
+if ./migration_manager.sh apply; then
+    echo "Migrations completed successfully."
+else
+    echo "Migration failed. Exiting container."
+    exit 1
+fi
 
 echo "Starting application with optimized settings..."
 # Add performance optimizations for uvicorn

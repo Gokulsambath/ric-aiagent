@@ -14,13 +14,13 @@ docker-compose up -d --build ricagent-api
 echo "Waiting for container to be ready..."
 sleep 5
 
-# Run migrations explicitly
+# Run migrations using the migration manager
 echo "Running database migrations..."
-docker-compose exec -T ricagent-api alembic upgrade head
+./migration_manager.sh apply
 
 # Show current migration status
 echo "Current migration status:"
-docker-compose exec -T ricagent-api alembic current
+./migration_manager.sh status
 
 # Prune unused
 echo "Cleaning up..."
