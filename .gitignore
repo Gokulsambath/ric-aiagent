@@ -4,6 +4,7 @@ __pycache__/
 # Virtual environment
 
 # Environment variables
+.env
 
 # OS files
 .DS_Store
@@ -11,10 +12,6 @@ __pycache__/
 # IDE configs
 
 .idea/# Environment files
-.env
-.env.local
-.env.*.local
-.agent/
 
 # Python
 __pycache__/
