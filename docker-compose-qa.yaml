@@ -105,7 +105,7 @@ services:
     restart: unless-stopped
     logging: *default-logging
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-ricagent_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
+      DATABASE_URL: postgres://${POSTGRES_USER:-ricagoapi_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
       BP_MODULE_NLU_DUCKLINGURL: http://duckling:8000
       EXTERNAL_URL: https://test.ricago.in/botpress
       BP_PRODUCTION: ${BP_PRODUCTION:-false}
@@ -344,4 +344,5 @@ volumes:
 # Connect to existing network
 networks:
   ricago-net:
+
     driver: bridge
