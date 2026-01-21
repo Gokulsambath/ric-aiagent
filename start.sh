@@ -12,18 +12,27 @@ while ! check_db_ready; do
     sleep 2
 done
 echo "Database connection established."
-
 echo "Seeding database first..."
-python -u -m app.utils.seed_widget_config
 
 echo "Running database migration with enhanced error handling..."
-# Use the migration manager for robust migration handling
-if ./migration_manager.sh apply; then
+# Run alembic directly inside the container
+echo "Validating migration chain..."
+if alembic check; then
+    echo "Migration chain is valid"
+else
+    echo "Migration chain needs repair, applying migrations..."
+fi
+
+echo "Applying migrations..."
+if alembic upgrade head; then
     echo "Migrations completed successfully."
 else
     echo "Migration failed. Exiting container."
     exit 1
 fi
+
+echo "Seeding database after migrations..."
+python -u -m app.utils.seed_widget_config
 
 echo "Starting application with optimized settings..."
 # Add performance optimizations for uvicorn
