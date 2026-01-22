@@ -43,9 +43,9 @@ if [ ! -d "../ric-aiagent-widget" ]; then
 fi
 
 # Check for SSL certificates
-if [ ! -f "../ssl/ricago.in.crt" ] || [ ! -f "../ssl/ricago.in.key" ]; then
+if [ ! -f "../ssl/ricagocomcert.pem" ] || [ ! -f "../ssl/ricagocomkey.key" ]; then
     echo "⚠️  SSL certificates not found. Production environment requires SSL certificates."
-    echo "   Expected: ../ssl/ricago.in.crt and ../ssl/ricago.in.key"
+    echo "   Expected: ../ssl/ricagocomcert.pem and ../ssl/ricagocomkey.key"
     echo "   You can start without SSL by commenting out the nginx service"
 fi
 
