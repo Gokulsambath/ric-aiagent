@@ -144,12 +144,11 @@ class BotpressService(ChatStrategy):
         target_bot_id = bot_id or self.bot_id
         
         # For CMS bot, prepend user details to the first message if provided
+        # For CMS bot, prepend user details to the first message if provided
         if target_bot_id == "ric-cms" and user_name:
-            print(f"DEBUG: CMS bot - prepending user name to message", flush=True)
-            user_info = f"User Name: {user_name}"
-            if user_designation:
-                user_info += f", Designation: {user_designation}"
-            message = f"{user_info}\n\n{message}"
+            print(f"DEBUG: CMS bot - replacing message with user name for initial handshake", flush=True)
+            # Send JUST the user name as the message content
+            message = user_name
             print(f"DEBUG: Modified message: {message}", flush=True)
         
         # --- LLM INTERCEPTION START ---
@@ -467,9 +466,13 @@ class BotpressService(ChatStrategy):
                 
                 # Check if message contains update categories (strong indicator it's the daily updates response)
                 has_categories = "**Corporate Laws**" in full_text or "**Taxation**" in full_text or "**Labour Laws**" in full_text
+                
+                # Check if User Input explicitly requested updates
+                user_requested = "RIC_DAILY_UPDATES" in message or "RIC_DAILY_UPDATES" in message.upper()
+                
                 has_trigger = any(phrase.lower() in full_text.lower() for phrase in trigger_phrases_daily)
                 
-                if has_trigger or has_categories:
+                if has_trigger or has_categories or user_requested:
                     try:
                         print(f"🔔 Detected RIC_DAILY_UPDATES trigger!", flush=True)
                         
@@ -499,11 +502,10 @@ class BotpressService(ChatStrategy):
                             grouped[category]['count'] += 1
                             grouped[category]['updates'].append(update)
                         
-                        if updates:
-                            daily_updates_data = {
-                                'total': len(updates),
+                        daily_updates_data = {
+                                'total': len(updates) if updates else 0,
                                 'grouped_by_category': grouped,
-                                'updates': updates
+                                'updates': updates if updates else []
                             }
                             print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
                     except Exception as e:

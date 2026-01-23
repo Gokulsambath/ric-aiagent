@@ -147,15 +147,15 @@ async def chat_endpoint(
         print(f"🔍 Selected strategy: {type(strategy).__name__}", flush=True)
         
         # Resolve Bot ID if available
-        if request.app_id:
-            # Try to find config by tenant_id or secret_key
-            config = db.query(WidgetConfig).filter(WidgetConfig.tenant_id == request.app_id).first()
-            if not config:
-                config = db.query(WidgetConfig).filter(WidgetConfig.secret_key == request.app_id).first()
+        # if request.app_id:
+        #     # Try to find config by tenant_id or secret_key
+        #     config = db.query(WidgetConfig).filter(WidgetConfig.tenant_id == request.app_id).first()
+        #     if not config:
+        #         config = db.query(WidgetConfig).filter(WidgetConfig.secret_key == request.app_id).first()
             
-            if config and config.bot_id:
-                bot_id = config.bot_id
-                print(f"DEBUG: Resolved bot_id: {bot_id} for app_id: {request.app_id}", flush=True)
+        #     if config and config.bot_id:
+        #         bot_id = config.bot_id
+        #         print(f"DEBUG: Resolved bot_id: {bot_id} for app_id: {request.app_id}", flush=True)
 
         # 6. Stream response
         async def event_generator():
