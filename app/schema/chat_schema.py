@@ -10,6 +10,8 @@ class ChatRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional context or metadata")
     is_new_chat: Optional[bool] = Field(False, description="Flag to force a new session or thread")
     app_id: Optional[str] = Field(None, description="App ID or Widget ID (used to identify bot configuration)")
+    user_name: Optional[str] = Field(None, description="User's full name (for CMS bot)")
+    user_designation: Optional[str] = Field(None, description="User's designation/role (for CMS bot)")
 
 class ChatResponse(BaseModel):
     session_id: str

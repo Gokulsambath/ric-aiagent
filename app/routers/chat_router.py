@@ -160,14 +160,40 @@ async def chat_endpoint(
         # 6. Stream response
         async def event_generator():
             full_content = ""
-            choices_data = None
-            acts_data = None
+
             
             try:
+                # Check if this is the first message in a new thread for CMS bot
+                is_first_message = False
+                user_name_to_send = None
+                user_designation_to_send = None
+                
+                if bot_id == "ric-cms":
+                    # Check if this is the first message (thread just created)
+                    message_count = db.query(ChatMessage).filter(ChatMessage.thread_id == thread.id).count()
+                    is_first_message = message_count == 1  # We already saved the user message above, so 1 means it's the first
+                    
+                    if is_first_message:
+                        user_name_to_send = request.user_name
+                        user_designation_to_send = request.user_designation
+                        print(f"DEBUG: First message for CMS bot - will send user details", flush=True)
+                        print(f"DEBUG: User name: {user_name_to_send}, Designation: {user_designation_to_send}", flush=True)
+                
                 # Stream from provider
-                async for chunk in strategy.stream_message(request.message, str(thread.id), bot_id=bot_id): # Use thread.id for provider session if appropriate
+                async for chunk in strategy.stream_message(
+                    request.message, 
+                    str(thread.id), 
+                    bot_id=bot_id,
+                    user_name=user_name_to_send,
+                    user_designation=user_designation_to_send
+                ):
+                    # Reset data holders for this chunk
+                    choices_data = None
+                    acts_data = None
+
                     # Check if this chunk contains choices marker
                     if "__CHOICES__" in chunk and "__END_CHOICES__" in chunk:
+                        print(f"DEBUG: chat_router FOUND CHOICES MARKER in chunk", flush=True)
                         # Extract choices JSON
                         start = chunk.index("__CHOICES__") + len("__CHOICES__")
                         end = chunk.index("__END_CHOICES__")
@@ -225,6 +251,7 @@ async def chat_endpoint(
                         'thread_id': str(thread.id)
                     }
                     if choices_data:
+                        print(f"DEBUG: chat_router sending sse_data with choices: {len(choices_data)} items", flush=True)
                         sse_data['choices'] = choices_data
                     if acts_data:
                         sse_data['acts'] = acts_data
