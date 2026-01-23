@@ -140,6 +140,36 @@ async def chat_endpoint(
             await redis_service.rpush(redis_key, redis_msg, max_len=REDIS_CHAT_HISTORY_MAX_LEN, ttl=REDIS_CHAT_HISTORY_TTL_SECONDS)
         except Exception as e:
             logger.error(f"Redis Cache Error (User): {e}")
+
+        # Check for Support Ticket Logic
+        if request.is_support_ticket:
+            try:
+                import time
+                from app.schema.email_dto import Email as EmailDTO
+                from app.repository.email_repo import Email as EmailRepo
+
+                ticket_id = f"TICKET-{int(time.time())}"
+                print(f"🎫 Generatng Support Ticket: {ticket_id}", flush=True)
+
+                email_repo = EmailRepo()
+                email_dto = EmailDTO(
+                    email=["support@rica.com"],
+                    subject=f"New Support Ticket {ticket_id}",
+                    message=f"A new support ticket has been raised.<br/><br/>Ticket ID: <b>{ticket_id}</b><br/>User Message: {request.message}",
+                    name=request.user_name if request.user_name else "Guest User",
+                    customer_email=request.email
+                )
+                
+                # Send email in background
+                email_repo.sendEmailBackground(email_dto)
+                print(f"📧 Support Ticket email queued for {ticket_id}", flush=True)
+                
+                # Optionally, we can append this context to metadata or bot message? 
+                # For now, user requested "send it to botpress as usual", so we just proceed.
+            except Exception as e:
+                print(f"❌ Failed to generate support ticket: {e}", flush=True)
+                # Continue with chat flow even if ticket generation fails?
+                # User prompted "whatever user types send it to botpress as usual"
         
         # 5. Get appropriate strategy
         print(f"🔍 Request provider: {request.provider}", flush=True)

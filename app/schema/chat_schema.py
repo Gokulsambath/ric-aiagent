@@ -11,7 +11,9 @@ class ChatRequest(BaseModel):
     is_new_chat: Optional[bool] = Field(False, description="Flag to force a new session or thread")
     app_id: Optional[str] = Field(None, description="App ID or Widget ID (used to identify bot configuration)")
     user_name: Optional[str] = Field(None, description="User's full name (for CMS bot)")
+    user_name: Optional[str] = Field(None, description="User's full name (for CMS bot)")
     user_designation: Optional[str] = Field(None, description="User's designation/role (for CMS bot)")
+    is_support_ticket: Optional[bool] = Field(False, description="Flag indicating if the message is a support ticket")
 
 class ChatResponse(BaseModel):
     session_id: str
