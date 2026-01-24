@@ -140,6 +140,36 @@ async def chat_endpoint(
             await redis_service.rpush(redis_key, redis_msg, max_len=REDIS_CHAT_HISTORY_MAX_LEN, ttl=REDIS_CHAT_HISTORY_TTL_SECONDS)
         except Exception as e:
             logger.error(f"Redis Cache Error (User): {e}")
+
+        # Check for Support Ticket Logic
+        if request.is_support_ticket:
+            try:
+                import time
+                from app.schema.email_dto import Email as EmailDTO
+                from app.repository.email_repo import Email as EmailRepo
+
+                ticket_id = f"TICKET-{int(time.time())}"
+                print(f"🎫 Generatng Support Ticket: {ticket_id}", flush=True)
+
+                email_repo = EmailRepo()
+                email_dto = EmailDTO(
+                    email=["support@rica.com"],
+                    subject=f"New Support Ticket {ticket_id}",
+                    message=f"A new support ticket has been raised.<br/><br/>Ticket ID: <b>{ticket_id}</b><br/>User Message: {request.message}",
+                    name=request.user_name if request.user_name else "Guest User",
+                    customer_email=request.email
+                )
+                
+                # Send email in background
+                email_repo.sendEmailBackground(email_dto)
+                print(f"📧 Support Ticket email queued for {ticket_id}", flush=True)
+                
+                # Optionally, we can append this context to metadata or bot message? 
+                # For now, user requested "send it to botpress as usual", so we just proceed.
+            except Exception as e:
+                print(f"❌ Failed to generate support ticket: {e}", flush=True)
+                # Continue with chat flow even if ticket generation fails?
+                # User prompted "whatever user types send it to botpress as usual"
         
         # 5. Get appropriate strategy
         print(f"🔍 Request provider: {request.provider}", flush=True)
@@ -147,27 +177,53 @@ async def chat_endpoint(
         print(f"🔍 Selected strategy: {type(strategy).__name__}", flush=True)
         
         # Resolve Bot ID if available
-        if request.app_id:
-            # Try to find config by tenant_id or secret_key
-            config = db.query(WidgetConfig).filter(WidgetConfig.tenant_id == request.app_id).first()
-            if not config:
-                config = db.query(WidgetConfig).filter(WidgetConfig.secret_key == request.app_id).first()
+        # if request.app_id:
+        #     # Try to find config by tenant_id or secret_key
+        #     config = db.query(WidgetConfig).filter(WidgetConfig.tenant_id == request.app_id).first()
+        #     if not config:
+        #         config = db.query(WidgetConfig).filter(WidgetConfig.secret_key == request.app_id).first()
             
-            if config and config.bot_id:
-                bot_id = config.bot_id
-                print(f"DEBUG: Resolved bot_id: {bot_id} for app_id: {request.app_id}", flush=True)
+        #     if config and config.bot_id:
+        #         bot_id = config.bot_id
+        #         print(f"DEBUG: Resolved bot_id: {bot_id} for app_id: {request.app_id}", flush=True)
 
         # 6. Stream response
         async def event_generator():
             full_content = ""
-            choices_data = None
-            acts_data = None
+
             
             try:
+                # Check if this is the first message in a new thread for CMS bot
+                is_first_message = False
+                user_name_to_send = None
+                user_designation_to_send = None
+                
+                if bot_id == "ric-cms":
+                    # Check if this is the first message (thread just created)
+                    message_count = db.query(ChatMessage).filter(ChatMessage.thread_id == thread.id).count()
+                    is_first_message = message_count == 1  # We already saved the user message above, so 1 means it's the first
+                    
+                    if is_first_message:
+                        user_name_to_send = request.user_name
+                        user_designation_to_send = request.user_designation
+                        print(f"DEBUG: First message for CMS bot - will send user details", flush=True)
+                        print(f"DEBUG: User name: {user_name_to_send}, Designation: {user_designation_to_send}", flush=True)
+                
                 # Stream from provider
-                async for chunk in strategy.stream_message(request.message, str(thread.id), bot_id=bot_id): # Use thread.id for provider session if appropriate
+                async for chunk in strategy.stream_message(
+                    request.message, 
+                    str(thread.id), 
+                    bot_id=bot_id,
+                    user_name=user_name_to_send,
+                    user_designation=user_designation_to_send
+                ):
+                    # Reset data holders for this chunk
+                    choices_data = None
+                    acts_data = None
+
                     # Check if this chunk contains choices marker
                     if "__CHOICES__" in chunk and "__END_CHOICES__" in chunk:
+                        print(f"DEBUG: chat_router FOUND CHOICES MARKER in chunk", flush=True)
                         # Extract choices JSON
                         start = chunk.index("__CHOICES__") + len("__CHOICES__")
                         end = chunk.index("__END_CHOICES__")
@@ -225,6 +281,7 @@ async def chat_endpoint(
                         'thread_id': str(thread.id)
                     }
                     if choices_data:
+                        print(f"DEBUG: chat_router sending sse_data with choices: {len(choices_data)} items", flush=True)
                         sse_data['choices'] = choices_data
                     if acts_data:
                         sse_data['acts'] = acts_data

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class BotpressService(ChatStrategy):
     def __init__(self):
+        # Use the full URL from settings which includes /botpress prefix
         self.base_url = settings.botpress.botpress_url
         self.bot_id = settings.botpress.bot_id
         # Webhook ID is not strictly needed for the Converse API unless verified via that channel
@@ -131,14 +132,24 @@ class BotpressService(ChatStrategy):
             print(f"❌ Traceback: {traceback.format_exc()}", flush=True)
             return {}
     
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None):
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, user_name: str = None, user_designation: str = None):
         """
         Stream a message to Botpress and yield text chunks.
         Botpress doesn't natively support streaming, so we fetch the full response
         and simulate streaming by yielding it character by character or word by word.
+        
+        For CMS bot (ric-cms), if user_name is provided, prepend it to the first message.
         """
         # Use passed bot_id or fallback to default
         target_bot_id = bot_id or self.bot_id
+        
+        # For CMS bot, prepend user details to the first message if provided
+        # For CMS bot, prepend user details to the first message if provided
+        if target_bot_id == "ric-cms" and user_name:
+            print(f"DEBUG: CMS bot - replacing message with user name for initial handshake", flush=True)
+            # Send JUST the user name as the message content
+            message = user_name
+            print(f"DEBUG: Modified message: {message}", flush=True)
         
         # --- LLM INTERCEPTION START ---
         # Heuristic Logic 1: Organization Type
@@ -273,22 +284,24 @@ class BotpressService(ChatStrategy):
                 print(f"Current flow: {current_flow}", flush=True)
                 print(f"=====================================", flush=True)
                 
-                # Build full response and collect choices
-                bot_parts = []
+                # Build separate responses and collect choices
+                text_responses = []
                 all_choices = []
                 
                 for r in responses:
                     resp_type = r.get("type", "")
                     print(f"Processing response type: {resp_type}, data: {r}", flush=True)
+                    print(f"DEBUG: Handling type '{resp_type}'", flush=True)
                     
                     
                     if resp_type == "text":
-                        bot_parts.append(r.get("text", ""))
+                        text_responses.append(r.get("text", ""))
                     
                     elif resp_type == "choice" or resp_type == "single-choice":
+                        print(f"DEBUG: Entered single-choice block for type {resp_type}", flush=True)
                         choice_text = r.get("text", "")
                         if choice_text:
-                            bot_parts.append(choice_text)
+                            text_responses.append(choice_text)
                         
                         choices = r.get("choices", [])
                         logger.info(f"Found {len(choices)} choices: {choices}")
@@ -299,13 +312,17 @@ class BotpressService(ChatStrategy):
                     elif resp_type == "carousel":
                         items = r.get("items", [])
                         if items:
-                            bot_parts.append("\n**Options:**")
+                            carousel_parts = ["\n**Options:**"]
                             for idx, item in enumerate(items, 1):
                                 title = item.get("title", f"Option {idx}")
-                                bot_parts.append(f"{idx}. {title}")
+                                carousel_parts.append(f"{idx}. {title}")
+                            text_responses.append("\n".join(carousel_parts))
                 
-                logger.info(f"Final bot_parts: {bot_parts}")
+                
+                logger.info(f"Total text responses: {len(text_responses)}")
                 logger.info(f"All choices: {all_choices}")
+                print(f"🔍 DEBUG: text_responses length = {len(text_responses)}", flush=True)
+                print(f"🔍 DEBUG: text_responses content = {text_responses}", flush=True)
                 
                 # HEURISTIC TRIGGER CHECK
                 # 1. Check for Organization Type Trigger
@@ -317,7 +334,8 @@ class BotpressService(ChatStrategy):
                 # 3. Check for Employee Size Trigger
                 trigger_phrases_size = ["Please enter your employee size", "enter your employee size"]
                 
-                full_bot_text = "\n".join(bot_parts) if bot_parts else ""
+                # Check all responses for triggers
+                full_bot_text = "\n".join(text_responses) if text_responses else ""
                 
                 if any(phrase in full_bot_text for phrase in trigger_phrases_org):
                     redis_key = f"ric:session:{session_id}:expecting_org_type"
@@ -334,15 +352,23 @@ class BotpressService(ChatStrategy):
                     logger.info(f"Setting Size Expectation Flag: {redis_key}")
                     await redis_service.set(redis_key, "true", ttl=600)
                 
-                full_text = full_bot_text if full_bot_text else "No response from bot"
-                
-                # Stream text content line by line
-                lines = full_text.split("\n")
-                for i, line in enumerate(lines):
-                    if i == 0:
-                        yield line
-                    else:
-                        yield "\n" + line
+                # Stream each text response separately with separators
+                if not text_responses:
+                    yield "No response from bot"
+                else:
+                    for idx, text in enumerate(text_responses):
+                        # Stream this response line by line
+                        lines = text.split("\n")
+                        for i, line in enumerate(lines):
+                            if i == 0:
+                                yield line
+                            else:
+                                yield "\n" + line
+                        
+                        # Add separator marker between responses (but not after the last one)
+                        if idx < len(text_responses) - 1:
+                            print(f'🔔 DEBUG: Emitting __NEXT_MESSAGE__ marker between response {idx} and {idx+1}', flush=True)
+                            yield "\n__NEXT_MESSAGE__"
                 
                 #Check if we're in the applicability flow AND have compliance variables
                 # Only query acts when inside applicability.flow.json
@@ -424,6 +450,9 @@ class BotpressService(ChatStrategy):
                 
                 # Check for RIC_DAILY_UPDATES workflow trigger
                 daily_updates_data = None
+                # Combine all text responses for trigger checking
+                full_text = "\n".join(text_responses) if text_responses else ""
+                
                 # More flexible trigger detection to match various Botpress message formats
                 trigger_phrases_daily = [
                     "RIC_DAILY_UPDATES",
@@ -437,9 +466,13 @@ class BotpressService(ChatStrategy):
                 
                 # Check if message contains update categories (strong indicator it's the daily updates response)
                 has_categories = "**Corporate Laws**" in full_text or "**Taxation**" in full_text or "**Labour Laws**" in full_text
+                
+                # Check if User Input explicitly requested updates
+                user_requested = "RIC_DAILY_UPDATES" in message or "RIC_DAILY_UPDATES" in message.upper()
+                
                 has_trigger = any(phrase.lower() in full_text.lower() for phrase in trigger_phrases_daily)
                 
-                if has_trigger or has_categories:
+                if has_trigger or has_categories or user_requested:
                     try:
                         print(f"🔔 Detected RIC_DAILY_UPDATES trigger!", flush=True)
                         
@@ -469,11 +502,10 @@ class BotpressService(ChatStrategy):
                             grouped[category]['count'] += 1
                             grouped[category]['updates'].append(update)
                         
-                        if updates:
-                            daily_updates_data = {
-                                'total': len(updates),
+                        daily_updates_data = {
+                                'total': len(updates) if updates else 0,
                                 'grouped_by_category': grouped,
-                                'updates': updates
+                                'updates': updates if updates else []
                             }
                             print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
                     except Exception as e:
@@ -502,6 +534,7 @@ class BotpressService(ChatStrategy):
                 if all_choices:
                     import json as json_lib
                     choices_json = json_lib.dumps(all_choices)
+                    print(f"DEBUG: Yielding choices marker: {choices_json}", flush=True)
                     yield f"\n__CHOICES__{choices_json}__END_CHOICES__"
                 
                 # If AI Assistant was one of the options, signal provider switch capability
