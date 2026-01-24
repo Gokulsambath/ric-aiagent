@@ -34,6 +34,10 @@ fi
 echo "Seeding database after migrations..."
 python -u -m app.utils.seed_widget_config
 
+echo "Running automatic linting/formatting..."
+autopep8 --in-place --recursive --aggressive --aggressive app/
+echo "Linting complete."
+
 echo "Starting application with optimized settings..."
 # Add performance optimizations for uvicorn
 exec uvicorn app.main:app \
