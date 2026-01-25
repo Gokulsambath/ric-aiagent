@@ -34,6 +34,7 @@ class MailSettings(BaseSettings):
     use_credentials: bool = Field(default=True, alias="USE_CREDENTIALS")
     validate_certs: bool = Field(default=True, alias="VALIDATE_CERTS")
     mail_to: str = Field(default="rica@ricago.com", alias="MAIL_TO")
+    support_email: str = Field(default="support@ricago.com", alias="SUPPORT_EMAIL")
 
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
