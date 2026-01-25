@@ -45,13 +45,13 @@ class OllamaSettings(BaseSettings):
 
 class OpenAISettings(BaseSettings):
     api_key: str = Field(default="e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI", alias="OPENAI_API_KEY")
-    api_url: str = Field(default="https://ollama.com", alias="OPENAI_API_URL") 
+    api_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_API_URL") 
     model: str = Field(default="gpt-oss:120b-cloud", alias="OPENAI_MODEL")
     
     model_config = SettingsConfigDict(extra="ignore", env_file=".env", env_file_encoding="utf-8")
 
 class BotpressSettings(BaseSettings):
-    botpress_url: str = Field(default="http://botpress:3000", alias="BOTPRESS_URL")
+    botpress_url: str = Field(default="http://botpress:3000/botpress", alias="BOTPRESS_URL")
     webhook_id: str = Field(default="test", alias="BOTPRESS_WEBHOOK_ID")
     bot_id: str = Field(default="test", alias="BOTPRESS_BOT_ID")
     
@@ -75,6 +75,10 @@ class ServerSettings(BaseSettings):
             "http://127.0.0.1:4000",
             "https://dev.ricago.in",
             "https://dev.ricago.in:3001"
+            "https://test.ricago.in",
+            "https://test.ricago.in:3001"
+            "https://ai.ricago.com",
+            "https://ai.ricago.com:3001"
         ], 
         alias="CORS_URLS"
     )

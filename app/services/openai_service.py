@@ -15,12 +15,12 @@ class OpenAIService(ChatStrategy):
         self.api_url = settings.openai.api_url
         self.model = settings.openai.model
         
-    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None) -> ChatResponse:
+    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None, **kwargs) -> ChatResponse:
         """
         Send message (non-streaming)
         """
         full_response = ""
-        async for chunk in self.stream_message(message, session_id, metadata, bot_id, system_prompt):
+        async for chunk in self.stream_message(message, session_id, metadata, bot_id, system_prompt, **kwargs):
             full_response += chunk
             
         return ChatResponse(
@@ -31,7 +31,7 @@ class OpenAIService(ChatStrategy):
             provider="openai"
         )
 
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None) -> AsyncGenerator[str, None]:
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, system_prompt: str = None, **kwargs) -> AsyncGenerator[str, None]:
         """
         Stream message using OpenAI-compatible API
         """

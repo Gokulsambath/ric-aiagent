@@ -507,7 +507,7 @@ class BotpressService(ChatStrategy):
                                 'grouped_by_category': grouped,
                                 'updates': updates if updates else []
                             }
-                            print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
+                        print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
                     except Exception as e:
                         logger.error(f"Error fetching daily updates: {str(e)}")
                         import traceback
