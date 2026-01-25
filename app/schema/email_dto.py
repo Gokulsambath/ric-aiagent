@@ -75,7 +75,7 @@ class Email(BaseModel):
         validated = []
         for value in values:
             try:
-                validate_email(value, check_deliverability=True)  # DNS check
+                validate_email(value, check_deliverability=False)  # DNS check
             except EmailNotValidError as e:
                 raise ValueError(str(e))
             validated.append(value)
@@ -94,7 +94,7 @@ class Email(BaseModel):
     @field_validator("customer_email")
     def validate_customer_email(cls, value):
         try:
-            validate_email(value, check_deliverability=True)  # DNS check
+            validate_email(value, check_deliverability=False)  # DNS check
         except EmailNotValidError as e:
             raise ValueError(str(e))
         return value

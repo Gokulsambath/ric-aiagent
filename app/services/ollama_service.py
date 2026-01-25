@@ -15,10 +15,11 @@ class OllamaService(ChatStrategy):
          self.repo = OllamaRepo() # Repo init is empty
          self.inner_service = OllamaStreamChat(self.repo)
 
-    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> ChatResponse:
+    async def send_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, **kwargs) -> ChatResponse:
         """
         Send message (non-streaming)
         """
+        # ... existing implementation ...
         # Build request
         # For simple chat strategy, we might strictly just send the message. 
         # But OllamaStreamChat logic is complex (history, etc).
@@ -66,7 +67,7 @@ class OllamaService(ChatStrategy):
             provider="ollama"
         )
 
-    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None) -> AsyncGenerator[str, None]:
+    async def stream_message(self, message: str, session_id: str, metadata: dict = None, bot_id: str = None, **kwargs) -> AsyncGenerator[str, None]:
         """
         Stream message
         """

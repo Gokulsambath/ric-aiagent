@@ -6,6 +6,7 @@ from app.models.chat_models import ChatSession, ChatMessage, ChatThread
 from app.models.user_model import User
 from app.models.widget_config_model import WidgetConfig
 from app.configs.database import get_db
+from app.configs.settings import settings
 from sqlalchemy.orm import Session
 from typing import List
 import logging
@@ -46,7 +47,7 @@ async def chat_endpoint(
         print(f"DEBUG: Found WidgetConfig for tenant: {widget_config.tenant_id}, bot_id: {widget_config.bot_id}", flush=True)
     else:
         # Simple check against system settings if needed, or fail
-        from app.configs.settings import settings
+        # from app.configs.settings import settings (Removed to avoid shadowing)
         import secrets
         for stored_key in settings.security.api_keys:
              if secrets.compare_digest(x_api_key, stored_key.key) and stored_key.enabled:
@@ -153,7 +154,7 @@ async def chat_endpoint(
 
                 email_repo = EmailRepo()
                 email_dto = EmailDTO(
-                    email=["support@rica.com"],
+                    email=[settings.mail.support_email],
                     subject=f"New Support Ticket {ticket_id}",
                     message=f"A new support ticket has been raised.<br/><br/>Ticket ID: <b>{ticket_id}</b><br/>User Message: {request.message}",
                     name=request.user_name if request.user_name else "Guest User",
