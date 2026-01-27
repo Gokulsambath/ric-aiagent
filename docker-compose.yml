@@ -75,7 +75,7 @@ services:
 
       # Mail Configuration (SendGrid)
       MAIL_USERNAME: ${MAIL_USERNAME:-apikey}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-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}
       MAIL_FROM: ${MAIL_FROM:-rinoshastanley13@gmail.com}
       MAIL_SERVER: ${MAIL_SERVER:-smtp.sendgrid.net}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -84,7 +84,7 @@ services:
       USE_CREDENTIALS: ${USE_CREDENTIALS:-true}
       VALIDATE_CERTS: ${VALIDATE_CERTS:-true}
       MAIL_TO: ${MAIL_TO:-rica@ricago.com}
-      
+
       # Performance optimizations
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
@@ -119,7 +119,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ricagoapi_user}:${POSTGRES_PASSWORD:-changeme123}@ricagent-postgres:5432/${BOTPRESS_DB:-botpress}
       BP_MODULE_NLU_DUCKLINGURL: http://duckling:8000
-      EXTERNAL_URL: https://ai.ricago.com/botpress
+      EXTERNAL_URL: https://dev.ricago.in/botpress
       BP_PRODUCTION: ${BP_PRODUCTION:-false}
     volumes:
       - ricagent_botpress_data:/botpress/data
@@ -199,14 +199,14 @@ services:
       context: ../ric-aiagent-widget
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_CHAT_API_URL: https://ai.ricago.com
+        NEXT_PUBLIC_CHAT_API_URL: https://dev.ricago.in
     container_name: ricagent-widget
     restart: unless-stopped
     logging: *default-logging
     ports:
       - "3001:4000"
     environment:
-      - NEXT_PUBLIC_CHAT_API_URL=https://ai.ricago.com
+      - NEXT_PUBLIC_CHAT_API_URL=https://dev.ricago.in
     networks:
       - ricago-net
     depends_on:
@@ -323,7 +323,7 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=https://ai.ricago.com/grafana/
+      - GF_SERVER_ROOT_URL=https://dev.ricago.in/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana_data:/var/lib/grafana
@@ -356,6 +356,4 @@ volumes:
 # Connect to existing network
 networks:
   ricago-net:
-
     driver: bridge
-
