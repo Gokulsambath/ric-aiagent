@@ -78,7 +78,9 @@ class ServerSettings(BaseSettings):
             "https://test.ricago.in",
             "https://test.ricago.in:3001"
             "https://ai.ricago.com",
-            "https://ai.ricago.com:3001"
+            "https://ai.ricago.com:3001",
+            "https://ricago.net",
+            "https://ricago.net:3001"
         ], 
         alias="CORS_URLS"
     )
