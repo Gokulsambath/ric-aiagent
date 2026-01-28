@@ -30,52 +30,10 @@ class Email(BaseRepository[EmailModel]):
 
     async def sendEmail(self, email: EmailDTO, extras: str = ""):
         try:
-            print(f"📧 [EmailRepo] Preparing to send email via SendGrid API...", flush=True)
-            print(f"   - To: {email.email}", flush=True)
-            print(f"   - Subject: {email.subject}", flush=True)
-            
-            # Prepare content
-            email_body = email.message + "<br/><br/>" + "--------<br/>" + "Customer Name: " + email.name + "<br/>" + "Customer Email: " + email.customer_email + "<br/>" + extras + "<br/>--------"
-            
-            # Construct SendGrid payload
-            payload = {
-                "personalizations": [
-                    {
-                        "to": [{"email": r} for r in email.email],
-                        "subject": email.subject
-                    }
-                ],
-                "from": {
-                    "email": settings.mail.mail_from,
-                    "name": "RIC Agent"
-                },
-                "content": [
-                    {
-                        "type": "text/html",
-                        "value": email_body
-                    }
-                ]
-            }
-
-            headers = {
-                "Authorization": f"Bearer {settings.mail.mail_password}",
-                "Content-Type": "application/json"
-            }
-            
-            async with httpx.AsyncClient(verify=False) as client:
-                response = await client.post(
-                    "https://api.sendgrid.com/v3/mail/send",
-                    json=payload,
-                    headers=headers,
-                    timeout=10.0
-                )
-                
-                if response.status_code in [200, 201, 202]:
-                    print(f"✅ [EmailRepo] Email sent successfully via API (Status: {response.status_code})", flush=True)
-                    return {"message": "Email sent successfully"}
-                else:
-                    print(f"❌ [EmailRepo] SendGrid API Error: {response.status_code} - {response.text}", flush=True)
-                    raise Exception(f"SendGrid API Error: {response.text}")
+            # Use the configured provider via Factory
+            from app.services.email_providers.factory import EmailProviderFactory
+            provider = EmailProviderFactory.get_provider()
+            return await provider.send_email(email, extras)
 
         except Exception as e:
             print(f"❌ [EmailRepo] FAILED to send email: {str(e)}", flush=True)
