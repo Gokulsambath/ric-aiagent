@@ -84,6 +84,7 @@ services:
       USE_CREDENTIALS: ${USE_CREDENTIALS:-true}
       VALIDATE_CERTS: ${VALIDATE_CERTS:-true}
       MAIL_TO: ${MAIL_TO:-rica@ricago.com}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-gmail}
 
       # Performance optimizations
       PYTHONUNBUFFERED: 1
