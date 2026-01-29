@@ -98,7 +98,7 @@ class ClassificationService:
         4. "ngo" -> "Society" (or Section 8 if specified)
         5. "proprietorship" -> "Sole Proprietorship"
         6. Typos (e.g., "Pravte") -> Fix and map to correct type.
-        7. ONLY return "Unclear" if the input is completely gibberish (e.g., "asdf").
+        7. ONLY return "Others" if the input is completely gibberish (e.g., "asdf") or doesn't match any known type.
         8. Be assertive. If it *could* be a Private Limited Company, assume it is.
         """
         
@@ -144,7 +144,7 @@ class ClassificationService:
         3. "medical" OR "doctor" -> "Healthcare"
         4. "school" OR "training" -> "Education"
         5. "shop" OR "mall" -> "Retail"
-        6. ONLY return "Unclear" if the input is completely gibberish.
+        6. ONLY return "Others" if the input is completely gibberish or doesn't match any known type.
         """
         
         result_value = await self._classify_generic(text, system_prompt, IndustryClassificationResult, key="industry_type")
@@ -198,7 +198,7 @@ class ClassificationService:
            - 501 to 1000 -> "501-1000"
            - > 1000 -> "1000+"
         3. Handle fuzzy terms: "small startup" -> "1-10", "mid-sized" -> "51-200".
-        4. ONLY return "Unclear" if the input is purely gibberish.
+        4. ONLY return "Others" if the input is purely gibberish.
         """
         
         result_value = await self._classify_generic(text, system_prompt, EmployeeSizeClassificationResult, key="employee_size")
@@ -249,11 +249,14 @@ class ClassificationService:
             
             # Application Logic: Confidence Threshold
             if result.confidence < 0.7:
-                logger.warning(f"Confidence {result.confidence} below threshold 0.7. Returning Unclear.")
-                return "Unclear"
+                logger.warning(f"Confidence {result.confidence} below threshold 0.7. Returning Others.")
+                return "Others"
                 
+            if classified_value and classified_value.upper() == "UNCLEAR":
+                return "Others"
+
             return classified_value
             
         except Exception as e:
             logger.error(f"Classification failed: {e}")
-            return "Unclear"
+            return "Others"

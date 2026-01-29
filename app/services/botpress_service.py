@@ -326,13 +326,13 @@ class BotpressService(ChatStrategy):
                 
                 # HEURISTIC TRIGGER CHECK
                 # 1. Check for Organization Type Trigger
-                trigger_phrases_org = ["Please enter your organization type", "enter your organization type"]
+                trigger_phrases_org = ["Please enter your organization type", "enter your organization type", "specify your organization", "custom organization"]
                 
                 # 2. Check for Industry Type Trigger
-                trigger_phrases_industry = ["Please enter your industry type", "enter your industry type"]
+                trigger_phrases_industry = ["Please enter your industry type", "enter your industry type", "specify your industry", "custom industry"]
                 
                 # 3. Check for Employee Size Trigger
-                trigger_phrases_size = ["Please enter your employee size", "enter your employee size"]
+                trigger_phrases_size = ["Please enter your employee size", "enter your employee size", "specify your employee size", "custom employee size"]
                 
                 # Check all responses for triggers
                 full_bot_text = "\n".join(text_responses) if text_responses else ""
@@ -461,7 +461,12 @@ class BotpressService(ChatStrategy):
                     "regulatory update",
                     "corporate laws",  # Category indicator
                     "taxation",  # Category indicator
-                    "labour laws"  # Category indicator
+                    "labour laws",  # Category indicator
+                    "sebi",
+                    "rbi",
+                    "irda",
+                    "customs",
+                    "dgft"
                 ]
                 
                 # Check if message contains update categories (strong indicator it's the daily updates response)
@@ -507,7 +512,7 @@ class BotpressService(ChatStrategy):
                                 'grouped_by_category': grouped,
                                 'updates': updates if updates else []
                             }
-                            print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
+                        print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
                     except Exception as e:
                         logger.error(f"Error fetching daily updates: {str(e)}")
                         import traceback
