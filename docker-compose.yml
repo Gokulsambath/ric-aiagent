@@ -67,7 +67,7 @@ services:
       # OpenAI-Compatible API (Ollama Cloud)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-e81e1546fd0b42eda763f75ea88f1b57.vbfSc4Z9xLPmc2EDA-lRH7uI}
       OPENAI_API_URL: ${OPENAI_API_URL:-https://ollama.com}
-      
+
       # Redis Configuration
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -75,7 +75,7 @@ services:
 
       # Mail Configuration (SendGrid)
       MAIL_USERNAME: ${MAIL_USERNAME:-apikey}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-<SENDGRID_API_KEY>}
       MAIL_FROM: ${MAIL_FROM:-rinoshastanley13@gmail.com}
       MAIL_SERVER: ${MAIL_SERVER:-smtp.sendgrid.net}
       MAIL_PORT: ${MAIL_PORT:-587}
