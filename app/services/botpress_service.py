@@ -284,58 +284,24 @@ class BotpressService(ChatStrategy):
                 print(f"Current flow: {current_flow}", flush=True)
                 print(f"=====================================", flush=True)
                 
-                # Build separate responses and collect choices
-                text_responses = []
-                all_choices = []
-                
+                # EXTRACT TRIGGER PHRASES AND PREPARE DATA
+                text_responses_for_triggers = []
                 for r in responses:
                     resp_type = r.get("type", "")
-                    print(f"Processing response type: {resp_type}, data: {r}", flush=True)
-                    print(f"DEBUG: Handling type '{resp_type}'", flush=True)
-                    
-                    
-                    if resp_type == "text":
-                        text_responses.append(r.get("text", ""))
-                    
-                    elif resp_type == "choice" or resp_type == "single-choice":
-                        print(f"DEBUG: Entered single-choice block for type {resp_type}", flush=True)
-                        choice_text = r.get("text", "")
-                        if choice_text:
-                            text_responses.append(choice_text)
-                        
-                        choices = r.get("choices", [])
-                        logger.info(f"Found {len(choices)} choices: {choices}")
-                        if choices:
-                            # Store choices for later
-                            all_choices.extend(choices)
-                    
+                    resp_text = r.get("text", "")
+                    if resp_type in ["text", "single-choice", "choice"] and resp_text:
+                         text_responses_for_triggers.append(resp_text)
                     elif resp_type == "carousel":
                         items = r.get("items", [])
-                        if items:
-                            carousel_parts = ["\n**Options:**"]
-                            for idx, item in enumerate(items, 1):
-                                title = item.get("title", f"Option {idx}")
-                                carousel_parts.append(f"{idx}. {title}")
-                            text_responses.append("\n".join(carousel_parts))
-                
-                
-                logger.info(f"Total text responses: {len(text_responses)}")
-                logger.info(f"All choices: {all_choices}")
-                print(f"🔍 DEBUG: text_responses length = {len(text_responses)}", flush=True)
-                print(f"🔍 DEBUG: text_responses content = {text_responses}", flush=True)
-                
-                # HEURISTIC TRIGGER CHECK
-                # 1. Check for Organization Type Trigger
+                        for item in items:
+                            if item.get("title"): text_responses_for_triggers.append(item.get("title"))
+
+                full_bot_text = "\n".join(text_responses_for_triggers) if text_responses_for_triggers else ""
+
+                # HEURISTIC TRIGGER CHECK (Setting Expectations)
                 trigger_phrases_org = ["Please enter your organization type", "enter your organization type", "specify your organization", "custom organization"]
-                
-                # 2. Check for Industry Type Trigger
                 trigger_phrases_industry = ["Please enter your industry type", "enter your industry type", "specify your industry", "custom industry"]
-                
-                # 3. Check for Employee Size Trigger
                 trigger_phrases_size = ["Please enter your employee size", "enter your employee size", "specify your employee size", "custom employee size"]
-                
-                # Check all responses for triggers
-                full_bot_text = "\n".join(text_responses) if text_responses else ""
                 
                 if any(phrase in full_bot_text for phrase in trigger_phrases_org):
                     redis_key = f"ric:session:{session_id}:expecting_org_type"
@@ -351,72 +317,37 @@ class BotpressService(ChatStrategy):
                     redis_key = f"ric:session:{session_id}:expecting_employee_size"
                     logger.info(f"Setting Size Expectation Flag: {redis_key}")
                     await redis_service.set(redis_key, "true", ttl=600)
-                
-                # Stream each text response separately with separators
-                if not text_responses:
-                    yield "No response from bot"
-                else:
-                    for idx, text in enumerate(text_responses):
-                        # Stream this response line by line
-                        lines = text.split("\n")
-                        for i, line in enumerate(lines):
-                            if i == 0:
-                                yield line
-                            else:
-                                yield "\n" + line
-                        
-                        # Add separator marker between responses (but not after the last one)
-                        if idx < len(text_responses) - 1:
-                            print(f'🔔 DEBUG: Emitting __NEXT_MESSAGE__ marker between response {idx} and {idx+1}', flush=True)
-                            yield "\n__NEXT_MESSAGE__"
-                
-                #Check if we're in the applicability flow AND have compliance variables
-                # Only query acts when inside applicability.flow.json
-                acts_data = None
+
+
+                # --- PRE-FETCH DATA ---
+
+                # 1. Acts Data
+                acts_data_payload = None
                 is_applicability_flow = current_flow == "applicability"
-                
-                # Check if any compliance variables are present
                 has_compliance_data = compliance_vars and any(
                     key in compliance_vars for key in ['orgType', 'states', 'industry', 'employeeSize']
                 )
                 
                 if is_applicability_flow and has_compliance_data:
                     try:
-                        # Mapping for Botpress values to DB values (for special cases)
+                        # Mapping for Botpress values to DB values
                         INDUSTRY_MAPPING = {
                             'it_ites': 'Information Technology',
                             'real_estate': 'Real Estate',
-                            # Add more mappings as needed
                         }
                         
-                        # Helper function to normalize Botpress values to DB format
                         def normalize_value(value, mapping=None):
-                            """Convert ANDHRA_PRADESH -> Andhra Pradesh, real_estate -> Real Estate"""
-                            if not value:
-                                return value
-                            
-                            # Check if there's a specific mapping first
-                            if mapping and value.lower() in mapping:
-                                return mapping[value.lower()]
-                            
-                            # Otherwise, replace underscores with spaces and title case
+                            if not value: return value
+                            if mapping and value.lower() in mapping: return mapping[value.lower()]
                             return value.replace('_', ' ').title()
                         
-                        # Extract and normalize variables from session.compliance
-                        state_val = normalize_value(compliance_vars.get('states'))  # "ANDHRA_PRADESH" -> "Andhra Pradesh"
-                        industry_val = normalize_value(compliance_vars.get('industry'), INDUSTRY_MAPPING)  # "it_ites" -> "Information Technology"
-                        org_type_val = normalize_value(compliance_vars.get('orgType'))  # "public_limited" -> "Public Limited"
-                        size_val = compliance_vars.get('employeeSize')  # "11-20" stays as-is
+                        state_val = normalize_value(compliance_vars.get('states'))
+                        industry_val = normalize_value(compliance_vars.get('industry'), INDUSTRY_MAPPING)
+                        org_type_val = normalize_value(compliance_vars.get('orgType'))
+                        size_val = compliance_vars.get('employeeSize')
                         
-                        print(f"📊 Acts query parameters (normalized):", flush=True)
-                        print(f"   State: {state_val}", flush=True)
-                        print(f"   Industry: {industry_val}", flush=True)
-                        print(f"   Org Type: {org_type_val}", flush=True)
-                        print(f"   Size: {size_val}", flush=True)
-                        
-                        # Only query acts if we have at least one filter
                         if state_val or industry_val or size_val or org_type_val:
-                            print(f"✅ Querying acts with normalized filters!", flush=True)
+                            print(f"✅ Querying acts with normalized filters: {state_val}, {industry_val}, {org_type_val}, {size_val}", flush=True)
                             
                             from app.repository.acts_repo import Acts as ActsRepo
                             acts_repo = ActsRepo()
@@ -429,7 +360,7 @@ class BotpressService(ChatStrategy):
                             )
                             
                             if acts_results:
-                                acts_data = {
+                                acts_data_payload = {
                                     'total': len(acts_results),
                                     'filters': {
                                         'state': state_val,
@@ -441,111 +372,139 @@ class BotpressService(ChatStrategy):
                                 logger.info(f"Found {len(acts_results)} acts results")
                     except Exception as e:
                         logger.error(f"Error querying acts: {str(e)}")
-                
-                # If we have acts data, yield it with markers
-                if acts_data:
-                    import json as json_lib
-                    acts_json = json_lib.dumps(acts_data)
-                    yield f"\n__ACTS_DATA__{acts_json}__END_ACTS__"
-                
-                # Check for RIC_DAILY_UPDATES workflow trigger
-                daily_updates_data = None
-                # Combine all text responses for trigger checking
-                full_text = "\n".join(text_responses) if text_responses else ""
-                
-                # More flexible trigger detection to match various Botpress message formats
+
+                # 2. Daily Updates Data
+                daily_updates_data_payload = None
                 trigger_phrases_daily = [
-                    "RIC_DAILY_UPDATES",
-                    "latest regulatory updates",
-                    "here are the latest regulatory",
-                    "regulatory update",
-                    "corporate laws",  # Category indicator
-                    "taxation",  # Category indicator
-                    "labour laws",  # Category indicator
-                    "sebi",
-                    "rbi",
-                    "irda",
-                    "customs",
-                    "dgft"
+                    "RIC_DAILY_UPDATES", "latest regulatory updates", "here are the latest regulatory",
+                    "regulatory update", "corporate laws", "taxation", "labour laws", "sebi", "rbi",
+                    "irda", "customs", "dgft"
                 ]
-                
-                # Check if message contains update categories (strong indicator it's the daily updates response)
-                has_categories = "**Corporate Laws**" in full_text or "**Taxation**" in full_text or "**Labour Laws**" in full_text
-                
-                # Check if User Input explicitly requested updates
+                has_categories = "**Corporate Laws**" in full_bot_text or "**Taxation**" in full_bot_text or "**Labour Laws**" in full_bot_text
                 user_requested = "RIC_DAILY_UPDATES" in message or "RIC_DAILY_UPDATES" in message.upper()
-                
-                has_trigger = any(phrase.lower() in full_text.lower() for phrase in trigger_phrases_daily)
+                has_trigger = any(phrase.lower() in full_bot_text.lower() for phrase in trigger_phrases_daily)
                 
                 if has_trigger or has_categories or user_requested:
                     try:
                         print(f"🔔 Detected RIC_DAILY_UPDATES trigger!", flush=True)
-                        
                         from app.repository.monthly_updates_repo import MonthlyUpdates as MonthlyUpdatesRepo
                         from app.services.monthly_updates_serv import MonthlyUpdates as MonthlyUpdatesService
                         from app.services.monthly_updates_scheduler import get_monthly_updates_scheduler
                         
-                        # Initialize service
                         redis_svc = RedisService()
                         scheduler = get_monthly_updates_scheduler(redis_svc)
                         repo = MonthlyUpdatesRepo()
                         updates_service = MonthlyUpdatesService(repo, scheduler)
                         
-                        # Fetch latest 5 updates
                         updates = updates_service.get_daily_updates(limit=5)
                         
-                        # Group by category
                         grouped = {}
                         for update in updates:
                             category = update.get('category', 'Other')
                             if category not in grouped:
-                                grouped[category] = {
-                                    'category': category,
-                                    'count': 0,
-                                    'updates': []
-                                }
+                                grouped[category] = {'category': category, 'count': 0, 'updates': []}
                             grouped[category]['count'] += 1
                             grouped[category]['updates'].append(update)
                         
-                        daily_updates_data = {
+                        daily_updates_data_payload = {
                                 'total': len(updates) if updates else 0,
                                 'grouped_by_category': grouped,
                                 'updates': updates if updates else []
                             }
-                        print(f"✅ Fetched {len(updates)} daily updates grouped into {len(grouped)} categories", flush=True)
+                        print(f"✅ Fetched {len(updates)} daily updates", flush=True)
                     except Exception as e:
                         logger.error(f"Error fetching daily updates: {str(e)}")
-                        import traceback
-                        print(f"❌ Daily updates error: {traceback.format_exc()}", flush=True)
-                
-                # If we have daily updates data, yield it with markers
-                if daily_updates_data:
-                    import json as json_lib
-                    daily_json = json_lib.dumps(daily_updates_data)
-                    yield f"\n__DAILY_UPDATES__{daily_json}__END_DAILY__"
 
+
+                # --- STREAMING RESPONSE ---
                 
-                # Check if any choice is AI_ASSISTANT related
+                if not responses:
+                    yield "No response from bot"
+                    return # Exit if no responses
+
+                acts_yielded = False
+                daily_yielded = False
                 ai_assistant_selected = False
-                if all_choices:
-                    for choice in all_choices:
-                        choice_value = choice.get("value", "").upper()
-                        # Check for various AI assistant choice values
-                        if choice_value in ["AI_ASSISTANT", "ASK_AI", "ASK_RICA", "TALK_AI"]:
-                            ai_assistant_selected = True
-                            break
+
+                for idx, r in enumerate(responses):
+                    resp_type = r.get("type", "")
+                    content = ""
+                    options = []
+
+                    # 1. Build Content
+                    if resp_type == "text":
+                        content = r.get("text", "")
+                    elif resp_type == "choice" or resp_type == "single-choice":
+                        content = r.get("text", "")
+                        options = r.get("choices", [])
+                        
+                        # Check for AI assistant selection in these options (for provider switching)
+                        for choice in options:
+                             if choice.get("value", "").upper() in ["AI_ASSISTANT", "ASK_AI", "ASK_RICA", "TALK_AI"]:
+                                 ai_assistant_selected = True
+
+                    elif resp_type == "carousel":
+                        items = r.get("items", [])
+                        if items:
+                            carousel_parts = ["\n**Options:**"]
+                            for i, item in enumerate(items, 1):
+                                title = item.get("title", f"Option {i}")
+                                carousel_parts.append(f"{i}. {title}")
+                            content = "\n".join(carousel_parts)
+
+                    # 2. Yield Content
+                    if content:
+                        lines = content.split("\n")
+                        for i, line in enumerate(lines):
+                            if i == 0: yield line
+                            else: yield "\n" + line
+
+                    # 3. Attach Acts Data (Optimistic attachment to 'You have selected' message)
+                    if acts_data_payload and not acts_yielded:
+                        # Attach if content has key phrase, OR if this is the last message and we haven't yielded yet?
+                        # Better: Attach to "You have selected" if possible.
+                        if "You have selected:" in content or "Organization:" in content:
+                            import json as json_lib
+                            acts_json = json_lib.dumps(acts_data_payload)
+                            yield f"\n__ACTS_DATA__{acts_json}__END_ACTS__"
+                            acts_yielded = True
+                    
+                    # 4. Attach Daily Updates
+                    if daily_updates_data_payload and not daily_yielded:
+                        # Logic to attach to relevant message? Or just attach to first finding of trigger?
+                        # If trigger phrase is in THIS content:
+                        if any(phrase.lower() in content.lower() for phrase in trigger_phrases_daily) or has_categories:
+                             import json as json_lib
+                             daily_json = json_lib.dumps(daily_updates_data_payload)
+                             yield f"\n__DAILY_UPDATES__{daily_json}__END_DAILY__"
+                             daily_yielded = True
+                    
+                    # 5. Attach Choices (Specific to this message)
+                    if options:
+                         import json as json_lib
+                         choices_json = json_lib.dumps(options)
+                         print(f"DEBUG: Yielding choices marker: {choices_json}", flush=True)
+                         yield f"\n__CHOICES__{choices_json}__END_CHOICES__"
+
+                    # 6. Separator for Next Bubble
+                    if idx < len(responses) - 1:
+                        yield "\n__NEXT_MESSAGE__"
                 
-                # If we have choices, yield them as a special marker
-                if all_choices:
-                    import json as json_lib
-                    choices_json = json_lib.dumps(all_choices)
-                    print(f"DEBUG: Yielding choices marker: {choices_json}", flush=True)
-                    yield f"\n__CHOICES__{choices_json}__END_CHOICES__"
+                # Cleanup: If we have payloads that weren't triggered by specific text matches (fallback), append them to the LAST message
+                if acts_data_payload and not acts_yielded:
+                     import json as json_lib
+                     acts_json = json_lib.dumps(acts_data_payload)
+                     yield f"\n__ACTS_DATA__{acts_json}__END_ACTS__"
                 
-                # If AI Assistant was one of the options, signal provider switch capability
+                if daily_updates_data_payload and not daily_yielded:
+                     import json as json_lib
+                     daily_json = json_lib.dumps(daily_updates_data_payload)
+                     yield f"\n__DAILY_UPDATES__{daily_json}__END_DAILY__"
+
+                # Switch provider check
                 if ai_assistant_selected:
                     yield f"\n__SWITCH_PROVIDER__openai__END_SWITCH__"
-                
+
         except httpx.HTTPError as e:
             logger.error(f"Botpress API Error: {str(e)}")
             raise Exception(f"Failed to communicate with Botpress: {str(e)}")
