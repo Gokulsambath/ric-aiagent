@@ -195,14 +195,18 @@ class Acts(BaseRepository[ActsModel]):
             
             if industry:
                 query = query.filter(
-                    ActsModel.industry == industry,
-                    ActsModel.industry.ilike("all")
+                    or_(
+                        ActsModel.industry == industry,
+                        ActsModel.industry.ilike("all")
+                    )
                 )
 
             if company_type:
                 query = query.filter(
-                    ActsModel.company_type == company_type,
-                    ActsModel.company_type.ilike("all")
+                    or_(
+                        ActsModel.company_type == company_type,
+                        ActsModel.company_type.ilike("all")
+                    )
                 )
                 
             if employee_size:
