@@ -162,6 +162,7 @@ class Acts(BaseRepository[ActsModel]):
         state: Optional[str] = None,
         industry: Optional[str] = None,
         employee_size: Optional[str] = None,
+        company_type: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """
@@ -183,17 +184,37 @@ class Acts(BaseRepository[ActsModel]):
             
             # Apply filters based on available Botpress variables
             if state:
-                query = query.filter(ActsModel.state == state)
+                query = query.filter(
+                    or_(
+                        ActsModel.state == state,
+                        ActsModel.state.ilike("all"),
+                        ActsModel.state.ilike("central")
+                    )
+
+                )
             
             if industry:
-                query = query.filter(ActsModel.industry == industry)
-            
+                query = query.filter(
+                    or_(
+                        ActsModel.industry == industry,
+                        ActsModel.industry.ilike("all")
+                    )
+                )
+
+            if company_type:
+                query = query.filter(
+                    or_(
+                        ActsModel.company_type == company_type,
+                        ActsModel.company_type.ilike("all")
+                    )
+                )
+                
             if employee_size:
                 # Match either the specific size OR "Applies to all"
                 query = query.filter(
                     or_(
                         ActsModel.employee_applicability == employee_size,
-                        ActsModel.employee_applicability == "Applies to all"
+                        ActsModel.employee_applicability.ilike("all")
                     )
                 )
             
