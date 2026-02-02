@@ -183,17 +183,27 @@ class Acts(BaseRepository[ActsModel]):
             
             # Apply filters based on available Botpress variables
             if state:
-                query = query.filter(ActsModel.state == state)
+                query = query.filter(
+                    or_(
+                        ActsModel.state == state,
+                        ActsModel.state.ilike("all"),
+                        ActsModel.state.ilike("central")
+                    )
+
+                )
             
             if industry:
-                query = query.filter(ActsModel.industry == industry)
+                query = query.filter(
+                    ActsModel.industry == industry,
+                    ActsModel.industry.ilike("all")
+                )
             
             if employee_size:
                 # Match either the specific size OR "Applies to all"
                 query = query.filter(
                     or_(
                         ActsModel.employee_applicability == employee_size,
-                        ActsModel.employee_applicability == "Applies to all"
+                        ActsModel.employee_applicability.ilike("all")
                     )
                 )
             
