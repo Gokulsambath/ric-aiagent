@@ -99,7 +99,12 @@ class Acts(BaseRepository[ActsModel]):
                 )
             
             if filters.employee_applicability:
-                query = query.filter(ActsModel.employee_applicability == filters.employee_applicability)
+                query = query.filter(
+                     or_(
+                        ActsModel.employee_applicability == filters.employee_applicability,
+                        ActsModel.employee_applicability.ilike("all")
+                     )
+                )
             
             if filters.search:
                 search_term = f"%{filters.search}%"
