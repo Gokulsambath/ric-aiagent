@@ -162,6 +162,7 @@ class Acts(BaseRepository[ActsModel]):
         state: Optional[str] = None,
         industry: Optional[str] = None,
         employee_size: Optional[str] = None,
+        company_type: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """
@@ -197,7 +198,13 @@ class Acts(BaseRepository[ActsModel]):
                     ActsModel.industry == industry,
                     ActsModel.industry.ilike("all")
                 )
-            
+
+            if company_type:
+                query = query.filter(
+                    ActsModel.company_type == company_type,
+                    ActsModel.company_type.ilike("all")
+                )
+                
             if employee_size:
                 # Match either the specific size OR "Applies to all"
                 query = query.filter(
