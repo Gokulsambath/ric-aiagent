@@ -74,13 +74,29 @@ class Acts(BaseRepository[ActsModel]):
             
             # Apply filters
             if filters.state:
-                query = query.filter(ActsModel.state == filters.state)
+                query = query.filter(
+                    or_(
+                        ActsModel.state == filters.state,
+                        ActsModel.state.ilike("all"),
+                        ActsModel.state.ilike("central")
+                    )
+                )
             
             if filters.industry:
-                query = query.filter(ActsModel.industry == filters.industry)
+                query = query.filter(
+                    or_(
+                        ActsModel.industry == filters.industry,
+                        ActsModel.industry.ilike("all")
+                    )
+                )
             
             if filters.legislative_area:
-                query = query.filter(ActsModel.legislative_area == filters.legislative_area)
+                query = query.filter(
+                    or_(
+                        ActsModel.legislative_area == filters.legislative_area,
+                        ActsModel.legislative_area.ilike("all")
+                    )
+                )
             
             if filters.employee_applicability:
                 query = query.filter(ActsModel.employee_applicability == filters.employee_applicability)
