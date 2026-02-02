@@ -425,6 +425,7 @@ class BotpressService(ChatStrategy):
                                 state=state_val,
                                 industry=industry_val,
                                 employee_size=size_val,
+                                company_type = org_type_val,
                                 limit=50
                             )
                             
